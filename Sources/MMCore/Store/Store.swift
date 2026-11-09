@@ -56,7 +56,6 @@ public final class Store: Sendable {
                 t.column("tags", .text).notNull()          // JSON 数组
                 t.column("notes", .text).notNull()
                 t.column("startURLs", .text).notNull()     // JSON 数组
-                t.column("alwaysOpenStartURLs", .boolean).notNull()
                 t.column("proxyKind", .text)
                 t.column("proxyHost", .text)
                 t.column("proxyPort", .integer)
@@ -91,6 +90,16 @@ public final class Store: Sendable {
             try db.create(table: "appSetting") { t in
                 t.primaryKey("key", .text)
                 t.column("value", .text).notNull()   // JSON
+            }
+        }
+        // 注意：已经发布的迁移不能再改。alwaysOpenStartURLs 曾被错误地加进了 v1，
+        // 导致更早建库的数据库缺这一列；这里按需补上，已有这一列的库跳过。
+        m.registerMigration("v3") { db in
+            let columns = try db.columns(in: "profile").map(\.name)
+            if !columns.contains("alwaysOpenStartURLs") {
+                try db.alter(table: "profile") { t in
+                    t.add(column: "alwaysOpenStartURLs", .boolean).notNull().defaults(to: false)
+                }
             }
         }
         return m

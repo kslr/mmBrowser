@@ -79,3 +79,42 @@ struct CheckPageTests {
         #expect(s.checkPage.url == nil)
     }
 }
+
+@Suite("迁移")
+struct MigrationTests {
+    /// 早期建的库：v1 没有 alwaysOpenStartURLs 列（与实际出过问题的库结构一致）。
+    @Test("缺 alwaysOpenStartURLs 列的旧库能升级并正常写入")
+    func upgradeOldDatabase() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory.appendingPathComponent("mmmig-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: root) }
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+        let db = root.appendingPathComponent("db.sqlite").path
+        let sql = """
+        CREATE TABLE grdb_migrations (identifier TEXT NOT NULL PRIMARY KEY);
+        INSERT INTO grdb_migrations VALUES ('v1'), ('v2');
+        CREATE TABLE profileGroup ("id" INTEGER PRIMARY KEY AUTOINCREMENT, "name" TEXT NOT NULL UNIQUE, "sortOrder" INTEGER NOT NULL DEFAULT 0);
+        CREATE TABLE "profile" ("id" TEXT PRIMARY KEY NOT NULL, "seq" INTEGER NOT NULL UNIQUE, "name" TEXT NOT NULL, "groupId" INTEGER REFERENCES "profileGroup"("id") ON DELETE SET NULL, "tags" TEXT NOT NULL, "notes" TEXT NOT NULL, "startURLs" TEXT NOT NULL, "proxyKind" TEXT, "proxyHost" TEXT, "proxyPort" INTEGER, "proxyUsername" TEXT, "proxyPassword" TEXT, "allowDirect" BOOLEAN NOT NULL, "language" TEXT NOT NULL, "timezone" TEXT, "geolocation" TEXT NOT NULL, "windowWidth" INTEGER, "windowHeight" INTEGER, "themeColor" TEXT, "extraArgs" TEXT NOT NULL, "lastExit" TEXT, "createdAt" DATETIME NOT NULL, "updatedAt" DATETIME NOT NULL, "lastOpenedAt" DATETIME, "deletedAt" DATETIME, "proxyExpiresAt" DATETIME, "extensionIds" TEXT NOT NULL DEFAULT '[]');
+        CREATE TABLE appSetting ("key" TEXT PRIMARY KEY NOT NULL, "value" TEXT NOT NULL);
+        """
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
+        p.arguments = [db, sql]
+        try p.run(); p.waitUntilExit()
+        #expect(p.terminationStatus == 0)
+
+        let store = try Store(paths: AppPaths(root: root))
+        var profile = Profile(name: "升级后新建")
+        profile.allowDirect = true
+        profile.alwaysOpenStartURLs = true
+        let saved = try store.insert(profile)
+        #expect(try store.profile(id: saved.id)?.alwaysOpenStartURLs == true)
+    }
+
+    @Test("新建的库也包含 alwaysOpenStartURLs 列")
+    func freshDatabase() throws {
+        let store = try Store(inMemory: AppPaths(root: FileManager.default.temporaryDirectory))
+        let saved = try store.insert(Profile(name: "x"))
+        #expect(try store.profile(id: saved.id)?.alwaysOpenStartURLs == false)
+    }
+}
