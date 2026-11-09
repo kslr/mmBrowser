@@ -50,21 +50,27 @@ struct StoreTests {
     }
 }
 
-@Suite("分组")
-struct GroupTests {
-    @Test func renameDeleteMove() throws {
+@Suite("标签")
+struct TagTests {
+    @Test func renameAndDelete() throws {
         let s = try Store(inMemory: AppPaths(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
-        let g = try s.group(named: "客户A")
-        let h = try s.group(named: "客户B")
-        #expect(try s.group(named: "客户A").id == g.id)
-        let a = try s.insert(Profile(name: "a", groupId: g.id))
-        let b = try s.insert(Profile(name: "b"))
-        try s.move([b.id], toGroup: h.id)
-        #expect(try s.profile(id: b.id)?.groupId == h.id)
-        try s.renameGroup(g.id!, to: "客户A2")
-        #expect(try s.groups().map(\.name) == ["客户A2", "客户B"])
-        try s.deleteGroup(g.id!)
-        #expect(try s.profile(id: a.id)?.groupId == nil)
+        let a = try s.insert(Profile(name: "a", tags: ["客户A", "广告"]))
+        let b = try s.insert(Profile(name: "b", tags: ["客户B", "广告"]))
+        let c = try s.insert(Profile(name: "c", tags: ["客户A"]))
+        try s.softDelete(c.id)
+        #expect(try s.allTags() == ["客户A", "客户B", "广告"].sorted())
+
+        try s.renameTag("客户A", to: "客户甲")
+        #expect(try s.profile(id: a.id)?.tags == ["客户甲", "广告"])
+        #expect(try s.profile(id: c.id)?.tags == ["客户甲"], "回收站里的也一起改")
+
+        // 改成已有的名字：合并，不出现重复
+        try s.renameTag("客户B", to: "广告")
+        #expect(try s.profile(id: b.id)?.tags == ["广告"])
+
+        try s.deleteTag("广告")
+        #expect(try s.profile(id: a.id)?.tags == ["客户甲"])
+        #expect(try s.profile(id: b.id)?.tags == [])
     }
 }
 
@@ -83,7 +89,7 @@ struct CheckPageTests {
 @Suite("迁移")
 struct MigrationTests {
     /// 早期建的库：v1 没有 alwaysOpenStartURLs 列（与实际出过问题的库结构一致）。
-    @Test("缺 alwaysOpenStartURLs 列的旧库能升级并正常写入")
+    @Test("旧库（缺 alwaysOpenStartURLs 列、带分组）能升级到 v4，数据完整、能正常写入")
     func upgradeOldDatabase() throws {
         let fm = FileManager.default
         let root = fm.temporaryDirectory.appendingPathComponent("mmmig-\(UUID().uuidString)")
@@ -103,7 +109,29 @@ struct MigrationTests {
         try p.run(); p.waitUntilExit()
         #expect(p.terminationStatus == 0)
 
+        // 旧库里一条带分组的环境
+        let seed = Process()
+        seed.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
+        seed.arguments = [db, """
+            INSERT INTO profileGroup(name) VALUES ('客户A');
+            INSERT INTO profile (id, seq, name, groupId, tags, notes, startURLs, proxyKind, proxyHost, proxyPort, allowDirect,
+                language, geolocation, extraArgs, createdAt, updatedAt)
+            VALUES ('old-1', 1, '旧环境', 1, '["t1"]', '备注', '[]', 'socks5', 'h.io', 1080, 0, 'en-US', 'block', '[]',
+                '2026-11-09 10:00:00.000', '2026-11-09 10:00:00.000');
+            """]
+        try seed.run(); seed.waitUntilExit()
+        #expect(seed.terminationStatus == 0)
+
         let store = try Store(paths: AppPaths(root: root))
+        let old = try #require(try store.profile(id: "old-1"))
+        #expect(old.name == "旧环境" && old.tags == ["t1"] && old.notes == "备注" && old.proxy?.host == "h.io")
+        let tables = try store.db.read { try String.fetchAll($0, sql: "SELECT name FROM sqlite_master WHERE type = 'table'") }
+        #expect(!tables.contains("profileGroup"))
+        let columns = try store.db.read { try $0.columns(in: "profile").map(\.name) }
+        #expect(!columns.contains("groupId"))
+        // 代理唯一约束在重建后依然有效
+        #expect(throws: StoreError.self) { try store.insert(Profile(name: "dup", proxy: ProxyConfig(kind: .socks5, host: "H.io", port: 1080))) }
+
         var profile = Profile(name: "升级后新建")
         profile.allowDirect = true
         profile.alwaysOpenStartURLs = true

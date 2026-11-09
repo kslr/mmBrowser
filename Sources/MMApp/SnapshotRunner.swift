@@ -27,14 +27,14 @@ enum SnapshotRunner {
                          size: CGSize(width: 600, height: 1500), to: outputDir.appendingPathComponent("editor-full.png"))
             ProfileEditorView.expandAllForSnapshot = false
             ProfileEditorView.height = 660
-            await render(ProfileEditorView(target: .new(groupId: nil)).environment(model),
+            await render(ProfileEditorView(target: .new(tag: nil)).environment(model),
                          size: CGSize(width: 600, height: 660), to: outputDir.appendingPathComponent("editor-new.png"))
         }
         await render(SettingsView().environment(model), size: CGSize(width: 600, height: 700),
                      to: outputDir.appendingPathComponent("settings.png"))
         await render(ContentView(initialSidebar: .proxies).environment(model), size: CGSize(width: 1280, height: 720),
                      to: outputDir.appendingPathComponent("proxies.png"))
-        await render(BatchCreateView(groupId: nil).environment(model), size: CGSize(width: 600, height: 700),
+        await render(BatchCreateView(tag: nil).environment(model), size: CGSize(width: 600, height: 700),
                      to: outputDir.appendingPathComponent("batch-create.png"))
         let ids = model.profiles.prefix(3).map(\.id)
         await render(BatchEditView(ids: ids).environment(model), size: CGSize(width: 560, height: 620),
@@ -110,16 +110,15 @@ enum SnapshotRunner {
         // 1. 批量新建
         var template = Profile(name: "t", language: "en-US")
         template.extraArgs = ["--window-position=-3000,-3000"]
-        let gid = model.createGroup("自检组")
-        template.groupId = gid
+        template.tags = ["自检组"]
         let before = model.profiles.count
         model.batchCreate(template: template, namePattern: "自检-{n}", startNumber: 1, digits: 2, count: 0, proxies: proxies)
         _ = await waitFor(5) { model.profiles.count == before + 2 }  // 等数据库观察推送到位
         let created = model.profiles.filter { $0.name.hasPrefix("自检-0") }.sorted { $0.seq < $1.seq }
-        check("批量新建 2 个，名称 自检-01/02，分组正确", created.count == 2 && model.profiles.count == before + 2
-              && created.map(\.name) == ["自检-01", "自检-02"] && created.allSatisfy { $0.groupId == gid })
-        if created.count != 2 || created.contains(where: { $0.groupId != gid }) {
-            print("batch:   before=\(before) now=\(model.profiles.count) gid=\(String(describing: gid)) created=\(created.map { "\($0.name)/\(String(describing: $0.groupId))" }) alert=\(model.alert?.title ?? "-") \(model.alert?.message ?? "")")
+        check("批量新建 2 个，名称 自检-01/02，标签正确", created.count == 2 && model.profiles.count == before + 2
+              && created.map(\.name) == ["自检-01", "自检-02"] && created.allSatisfy { $0.tags == ["自检组"] })
+        if created.count != 2 {
+            print("batch:   before=\(before) now=\(model.profiles.count) created=\(created.map(\.name)) alert=\(model.alert?.title ?? "-")")
         }
         model.alert = nil
         guard created.count == 2 else { return false }
@@ -158,9 +157,9 @@ enum SnapshotRunner {
         check("复制环境：不带代理、保留标签", copy?.proxy == nil && copy?.tags.contains("自检标签") == true)
 
         // 6. CSV 往返
-        let csv = ProfileCSV.export(ids.compactMap(model.profile)) { model.groupName($0) }
+        let csv = ProfileCSV.export(ids.compactMap(model.fresh))
         let rows = (try? ProfileCSV.parseImport(csv)) ?? []
-        check("CSV 导出再解析，代理和分组名一致", rows.count == 2 && rows[0].profile.proxy == proxies[1] && rows[0].groupName == "自检组")
+        check("CSV 导出再解析，代理和标签一致", rows.count == 2 && rows[0].profile.proxy == proxies[1] && rows[0].profile.tags.contains("自检组"))
 
         // 7. 运行上限 = 1：批量启动两个，只启动一个并提示
         let oldMax = UserDefaults.standard.object(forKey: AppModel.maxRunningKey)
@@ -181,7 +180,6 @@ enum SnapshotRunner {
         // 清理
         model.moveToTrash(ids + [copy?.id].compactMap { $0 })
         model.purge(ids + [copy?.id].compactMap { $0 })
-        if let gid { model.deleteGroup(gid) }
         _ = store
         print("batch: 完成，失败 \(failures) 项")
         return failures == 0
@@ -189,17 +187,15 @@ enum SnapshotRunner {
 
     private static func seedDemoData(_ model: AppModel) {
         guard let store = model.store, (try? store.profiles(includeDeleted: true).isEmpty) == true else { return }
-        let a = try? store.group(named: "客户A")
-        _ = try? store.group(named: "客户B")
-        let samples: [(String, String, String, Int64?, [String], String?)] = [
-            ("客户A-广告户01", "socks5://u1:p@203.0.113.10:1080", "en-US", a?.id, ["广告"], "US"),
-            ("客户A-广告户02", "http://u2:p@203.0.113.11:8080", "en-US", a?.id, ["广告", "重要"], "US"),
-            ("日本店铺", "socks5://198.51.100.7:1080", "ja-JP", nil, ["店铺"], "JP"),
-            ("测试环境", "socks5://u3:p@192.0.2.44:1080", "de-DE", nil, [], nil),
+        let samples: [(String, String, String, [String], String?)] = [
+            ("客户A-广告户01", "socks5://u1:p@203.0.113.10:1080", "en-US", ["客户A", "广告"], "US"),
+            ("客户A-广告户02", "http://u2:p@203.0.113.11:8080", "en-US", ["客户A", "广告", "重要"], "US"),
+            ("日本店铺", "socks5://198.51.100.7:1080", "ja-JP", ["店铺"], "JP"),
+            ("测试环境", "socks5://u3:p@192.0.2.44:1080", "de-DE", [], nil),
         ]
-        for (name, proxy, lang, gid, tags, cc) in samples {
+        for (name, proxy, lang, tags, cc) in samples {
             var p = Profile(name: name, proxy: try? ProxyConfig.parse(proxy), language: lang,
-                            startURLs: ["https://example.com/"], groupId: gid, tags: tags,
+                            startURLs: ["https://example.com/"], tags: tags,
                             notes: name.hasPrefix("客户A") ? "BC 7012345678" : "")
             if let saved = try? store.insert(p), let cc {
                 p = saved

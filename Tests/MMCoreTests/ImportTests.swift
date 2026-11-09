@@ -47,11 +47,10 @@ struct ImportTests {
         p.extraArgs = ["--force-dark-mode"]
         p.extensionIds = ["ddkjiahejlhfcafbddmgiahcphecmpfh"]
         p.proxyExpiresAt = ProfileCSV.parseDate("2026-12-31")
-        let csv = ProfileCSV.export([p]) { _ in "分组1" }
+        let csv = ProfileCSV.export([p])
         let rows = try ProfileCSV.parseImport(csv)
         #expect(rows.count == 1)
         let q = rows[0].profile
-        #expect(rows[0].groupName == "分组1")
         #expect(q.name == p.name && q.proxy == p.proxy && q.language == p.language && q.timezone == p.timezone)
         #expect(q.startURLs == p.startURLs && q.tags == p.tags && q.notes == p.notes)
         #expect(q.windowWidth == 1440 && q.themeColor == "#112233" && q.geolocation == .ask && q.alwaysOpenStartURLs)
@@ -147,15 +146,14 @@ struct DataTests {
         #expect(try ChromeCookies.importJSON(try ChromeCookies.exportJSON(c)) == c)
     }
 
-    @Test("备份导出再导入：新 id、分组按名称、代理冲突时去掉代理、数据目录跟着走")
+    @Test("备份导出再导入：新 id、标签保留、代理冲突时去掉代理、数据目录跟着走")
     func backupRoundTrip() throws {
         let fm = FileManager.default
         let root = fm.temporaryDirectory.appendingPathComponent("mmbk-\(UUID().uuidString)")
         defer { try? fm.removeItem(at: root) }
         let store = try Store(paths: AppPaths(root: root))
-        let g = try store.group(named: "客户A")
         let proxy = ProxyConfig(kind: .socks5, host: "h", port: 1, username: "u", password: "p")
-        var src = try store.insert(Profile(name: "源", proxy: proxy, groupId: g.id, tags: ["t"]))
+        var src = try store.insert(Profile(name: "源", proxy: proxy, tags: ["t"]))
         try store.recordOpened(src.id)
         src = try #require(try store.profile(id: src.id))
         let dir = store.paths.profileDir(src.id)
@@ -172,7 +170,7 @@ struct DataTests {
         let r = try ProfileBackup.import(from: file, store: store)
         #expect(r.profile.id != src.id && r.profile.seq == 2 && r.profile.name == "源")
         #expect(r.profile.proxy == nil && r.warnings.count == 1)
-        #expect(r.profile.groupId == g.id && r.profile.tags == ["t"])
+        #expect(r.profile.tags == ["t"])
         #expect(r.profile.lastOpenedAt != nil)
         let newDir = store.paths.profileDir(r.profile.id)
         #expect(try Data(contentsOf: newDir.appendingPathComponent("Default/Login Data")) == Data("pw".utf8))

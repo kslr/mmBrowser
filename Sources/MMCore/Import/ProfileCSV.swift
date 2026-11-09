@@ -3,14 +3,13 @@ import Foundation
 /// 环境 ⇄ CSV。导出用中文表头；导入同时认中文和英文表头，列的顺序随意，只有"名称"是必需的。
 public enum ProfileCSV {
     enum Column: String, CaseIterable {
-        case seq, name, group, tags, notes, proxy, proxyExpires, startURLs, alwaysOpenStartURLs
+        case seq, name, tags, notes, proxy, proxyExpires, startURLs, alwaysOpenStartURLs
         case language, timezone, geolocation, window, color, extraArgs, extensions, exitIP, exitCountry
 
         var title: String {
             switch self {
             case .seq: "序号"
             case .name: "名称"
-            case .group: "分组"
             case .tags: "标签"
             case .notes: "备注"
             case .proxy: "代理"
@@ -62,14 +61,13 @@ public enum ProfileCSV {
     }
 
     /// 导出（包含代理密码，文件要妥善保管）。
-    public static func export(_ profiles: [Profile], groupName: (Int64?) -> String?) -> String {
+    public static func export(_ profiles: [Profile]) -> String {
         var rows = [Column.allCases.map(\.title)]
         for p in profiles {
             rows.append(Column.allCases.map { col in
                 switch col {
                 case .seq: String(p.seq)
                 case .name: p.name
-                case .group: groupName(p.groupId) ?? ""
                 case .tags: p.tags.joined(separator: ",")
                 case .notes: p.notes
                 case .proxy: p.proxy?.urlString ?? (p.allowDirect ? "direct" : "")
@@ -91,10 +89,9 @@ public enum ProfileCSV {
         return CSV.encode(rows)
     }
 
-    /// 导入解析出的一行：环境（未入库）+ 分组名（由调用方按名称建分组）。
+    /// 导入解析出的一行：环境（未入库）和它在文件里的行号。
     public struct Row: Sendable {
         public var profile: Profile
-        public var groupName: String?
         public let lineNumber: Int
     }
 
@@ -172,8 +169,7 @@ public enum ProfileCSV {
             p.extensionIds = v(.extensions).split(whereSeparator: { $0 == "," || $0 == " " })
                 .map(String.init).filter(ExtensionID.isValid)
 
-            let group = v(.group)
-            rows.append(Row(profile: p, groupName: group.isEmpty ? nil : group, lineNumber: line))
+            rows.append(Row(profile: p, lineNumber: line))
         }
         guard !rows.isEmpty else { throw ImportError.empty }
         return rows

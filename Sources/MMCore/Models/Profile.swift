@@ -13,7 +13,6 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
     /// 序号，从 1 开始递增，删除后不复用。
     public var seq: Int
     public var name: String
-    public var groupId: Int64?
     public var tags: [String]
     public var notes: String
     public var startURLs: [String]
@@ -57,7 +56,6 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
         language: String = LanguageTag.auto,
         timezone: String? = nil,
         startURLs: [String] = [],
-        groupId: Int64? = nil,
         tags: [String] = [],
         notes: String = ""
     ) {
@@ -65,7 +63,6 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
         self.id = id
         self.seq = 0
         self.name = name
-        self.groupId = groupId
         self.tags = tags
         self.notes = notes
         self.startURLs = startURLs

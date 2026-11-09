@@ -6,8 +6,7 @@ struct ProfileDraft {
     enum ProxyMode: String, CaseIterable { case proxy, direct }
 
     var name = ""
-    var groupId: Int64?
-    var tagsText = ""
+    var tags: [String] = []
     var notes = ""
 
     var proxyMode = ProxyMode.proxy
@@ -34,16 +33,15 @@ struct ProfileDraft {
 
     static let windowPresets = ["默认", "1280x800", "1366x768", "1440x900", "1536x864", "1680x1050", "1920x1080", "自定义"]
 
-    init(defaultLanguage: String, groupId: Int64?) {
+    init(defaultLanguage: String, tags: [String] = []) {
         languageAuto = defaultLanguage == LanguageTag.auto
         language = languageAuto ? "en-US" : defaultLanguage
-        self.groupId = groupId
+        self.tags = tags
     }
 
     init(_ p: Profile) {
         name = p.name
-        groupId = p.groupId
-        tagsText = p.tags.joined(separator: ", ")
+        tags = p.tags
         notes = p.notes
         if let proxy = p.proxy {
             proxyMode = .proxy
@@ -89,9 +87,7 @@ struct ProfileDraft {
     /// 校验并写入 profile。名称可以为空（保存时自动命名）。启动页不在表单里编辑，保持原值。
     func apply(to p: inout Profile) throws {
         p.name = name.trimmingCharacters(in: .whitespaces)
-        p.groupId = groupId
-        p.tags = tagsText.split(whereSeparator: { $0 == "," || $0 == "，" })
-            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        p.tags = tags
         p.notes = notes
 
         switch proxyMode {
@@ -171,7 +167,7 @@ struct ProfileEditorView: View {
     @Environment(\.dismiss) private var dismiss
     let target: EditorTarget
 
-    @State private var draft = ProfileDraft(defaultLanguage: LanguageTag.auto, groupId: nil)
+    @State private var draft = ProfileDraft(defaultLanguage: LanguageTag.auto)
     @State private var original: Profile?
     @State private var loaded = false
     @State private var proxyText = ""
@@ -217,11 +213,9 @@ struct ProfileEditorView: View {
     private var basicSection: some View {
         Section("基本") {
             TextField("名称", text: $draft.name, prompt: Text(isNew ? "留空自动命名，如 环境-12" : ""))
-            Picker("分组", selection: $draft.groupId) {
-                Text("未分组").tag(Int64?.none)
-                ForEach(model.groups) { g in Text(g.name).tag(Int64?.some(g.id!)) }
+            LabeledContent("标签") {
+                TagTokenField(tags: $draft.tags, suggestions: model.allTags, placeholder: "可选，输入后按回车")
             }
-            TextField("标签", text: $draft.tagsText, prompt: Text("可选，用逗号分隔"))
             TextField("备注", text: $draft.notes, prompt: Text("可选"), axis: .vertical).lineLimit(1...3)
         }
     }
@@ -459,8 +453,8 @@ struct ProfileEditorView: View {
         loaded = true
         if Self.expandAllForSnapshot { showMore = true }
         switch target {
-        case .new(let gid):
-            draft = ProfileDraft(defaultLanguage: model.defaultLanguage, groupId: gid)
+        case .new(let tag):
+            draft = ProfileDraft(defaultLanguage: model.defaultLanguage, tags: tag.map { [$0] } ?? [])
         case .edit(let id):
             if let p = model.fresh(id) ?? model.profile(id) {
                 original = p

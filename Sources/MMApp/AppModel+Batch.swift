@@ -11,8 +11,6 @@ struct ExtensionEntry: Codable, Hashable, Identifiable {
 
 /// 批量编辑：只改勾选了的字段。
 struct BatchEdit {
-    var setGroup = false
-    var groupId: Int64?
     var addTags: [String] = []
     var removeTags: [String] = []
     var setLanguage = false
@@ -32,7 +30,6 @@ struct BatchEdit {
     var expiry: Date?
 
     func apply(to p: inout Profile) {
-        if setGroup { p.groupId = groupId }
         if !addTags.isEmpty { p.tags = Array(NSOrderedSet(array: p.tags + addTags)) as? [String] ?? p.tags }
         if !removeTags.isEmpty { p.tags.removeAll { removeTags.contains($0) } }
         if setLanguage { p.language = language }
@@ -190,7 +187,7 @@ extension AppModel {
         panel.nameFieldStringValue = "mmBrowser-环境-\(Date().formatted(.iso8601.year().month().day())).csv"
         panel.message = "导出的文件包含代理密码，请妥善保管"
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        let text = ProfileCSV.export(list) { self.groupName($0) }
+        let text = ProfileCSV.export(list)
         do {
             // 带 BOM，Excel 打开中文不乱码
             try (Data([0xEF, 0xBB, 0xBF]) + Data(text.utf8)).write(to: url)
@@ -220,9 +217,8 @@ extension AppModel {
         var failed: [(String, String)] = []
         var ok = 0
         for row in rows {
-            var p = row.profile
+            let p = row.profile
             do {
-                if let g = row.groupName { p.groupId = try store.group(named: g).id }
                 try store.insert(p)
                 ok += 1
             } catch {

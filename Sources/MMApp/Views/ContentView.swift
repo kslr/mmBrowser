@@ -45,19 +45,20 @@ struct ContentView: View {
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .newProfile)) { _ in
-            editing = .new(groupId: currentGroupId)
+            editing = .new(tag: currentTag)
         }
     }
 
-    private var currentGroupId: Int64? {
-        if case .group(let id) = sidebar { return id }
+    private var currentTag: String? {
+        if case .tag(let t) = sidebar { return t }
         return nil
     }
 }
 
 /// 编辑表单的对象：新建（可带默认分组）或编辑已有环境。
 enum EditorTarget: Identifiable {
-    case new(groupId: Int64?)
+    /// 新建；tag 不为空时预先带上这个标签
+    case new(tag: String?)
     case edit(String)
 
     var id: String {

@@ -4,7 +4,7 @@ import SwiftUI
 /// 表格的一行（把排序要用的字段算好）。
 struct ProfileRow: Identifiable {
     let profile: Profile
-    let groupName: String
+    let tagsText: String
     let exitText: String
     let lastOpened: Date
 
@@ -12,9 +12,9 @@ struct ProfileRow: Identifiable {
     var seq: Int { profile.seq }
     var name: String { profile.name }
 
-    init(_ p: Profile, groupName: String?) {
+    init(_ p: Profile) {
         profile = p
-        self.groupName = groupName ?? ""
+        tagsText = p.tags.joined(separator: "、")
         if let e = p.lastExit {
             exitText = [e.countryCode, e.ip].compactMap { $0 }.joined(separator: " ")
         } else {
@@ -44,11 +44,11 @@ struct ProfileListView: View {
             .filter { p in
                 guard !q.isEmpty else { return true }
                 let hay = [p.name, p.notes, "#\(p.seq)", p.tags.joined(separator: " "),
-                           p.proxy?.host ?? "", p.lastExit?.ip ?? "", p.lastExit?.countryCode ?? "",
-                           model.groupName(p.groupId) ?? ""].joined(separator: " ").lowercased()
+                           p.proxy?.host ?? "", p.lastExit?.ip ?? "", p.lastExit?.countryCode ?? ""]
+                    .joined(separator: " ").lowercased()
                 return hay.contains(q)
             }
-            .map { ProfileRow($0, groupName: model.groupName($0.groupId)) }
+            .map { ProfileRow($0) }
             .sorted(using: sortOrder)
     }
 
@@ -72,10 +72,13 @@ struct ProfileListView: View {
             }
             .width(min: 70, ideal: 95)
 
-            TableColumn("分组", value: \.groupName) { r in
-                Text(r.groupName.isEmpty ? "—" : r.groupName).foregroundStyle(r.groupName.isEmpty ? .tertiary : .primary)
+            TableColumn("标签", value: \.tagsText) { r in
+                Text(r.tagsText.isEmpty ? "—" : r.tagsText)
+                    .lineLimit(1)
+                    .foregroundStyle(r.tagsText.isEmpty ? .tertiary : .primary)
+                    .help(r.tagsText)
             }
-            .width(min: 50, ideal: 80)
+            .width(min: 60, ideal: 120)
 
             TableColumn("代理") { r in
                 HStack(spacing: 5) {
@@ -110,11 +113,6 @@ struct ProfileListView: View {
                     .lineLimit(1).foregroundStyle(.secondary)
             }
             .width(min: 80, ideal: 110)
-
-            TableColumn("标签") { r in
-                Text(r.profile.tags.joined(separator: ", ")).lineLimit(1).foregroundStyle(.secondary)
-            }
-            .width(min: 40, ideal: 60)
 
             TableColumn("最后打开", value: \.lastOpened) { r in
                 Text(r.profile.lastOpenedAt.map { $0.formatted(.relative(presentation: .named)) } ?? "从未")
@@ -176,9 +174,7 @@ struct ProfileListView: View {
 
     private var csvSummary: String {
         guard let rows = pendingCSV else { return "" }
-        let groups = Set(rows.compactMap(\.groupName)).subtracting(model.groups.map(\.name))
         var s = "代理：\(rows.filter { $0.profile.proxy != nil }.count) 个环境有代理。"
-        if !groups.isEmpty { s += "\n将新建分组：\(groups.sorted().joined(separator: "、"))。" }
         s += "\n代理已被其它环境占用的行会导入失败，结束后会列出。"
         return s
     }
@@ -187,8 +183,7 @@ struct ProfileListView: View {
         switch scope {
         case .all: "全部环境"
         case .running: "运行中"
-        case .ungrouped: "未分组"
-        case .group(let id): model.groupName(id) ?? "分组"
+        case .untagged: "无标签"
         case .tag(let t): "标签：\(t)"
         case .proxies: "代理"
         case .trash: "回收站"
@@ -211,8 +206,9 @@ struct ProfileListView: View {
 
     private var selected: [String] { Array(selection) }
 
-    private var currentGroupId: Int64? {
-        if case .group(let id) = scope { return id }
+    /// 在某个标签视图里新建环境时，自动带上这个标签。
+    private var currentTag: String? {
+        if case .tag(let t) = scope { return t }
         return nil
     }
 
@@ -241,8 +237,8 @@ struct ProfileListView: View {
                 } label: { Label("编辑", systemImage: "pencil") }
                     .disabled(selection.count != 1)
                 Menu {
-                    Button("新建环境…") { editing = .new(groupId: currentGroupId) }
-                    Button("批量新建…") { batch = .create(groupId: currentGroupId) }
+                    Button("新建环境…") { editing = .new(tag: currentTag) }
+                    Button("批量新建…") { batch = .create(tag: currentTag) }
                     Divider()
                     Button("从 CSV 导入…") { pendingCSV = model.pickCSVForImport() }
                     Button("导入环境备份…") { model.importBackups() }
@@ -251,7 +247,7 @@ struct ProfileListView: View {
                 } label: {
                     Label("新建环境", systemImage: "plus")
                 } primaryAction: {
-                    editing = .new(groupId: currentGroupId)
+                    editing = .new(tag: currentTag)
                 }
                 .help("新建环境（⌘N）；点箭头可批量新建、导入")
             }
@@ -278,10 +274,16 @@ struct ProfileListView: View {
             Button("检测代理") { model.checkMany(ids) }
             Button("分配代理…") { batch = .assignProxies(ids) }
             Button("设置代理到期日…") { batch = .expiry(ids) }
-            Menu("移到分组") {
-                Button("未分组") { model.move(ids, toGroup: nil) }
-                Divider()
-                ForEach(model.groups) { g in Button(g.name) { model.move(ids, toGroup: g.id) } }
+            Menu("添加标签") {
+                ForEach(model.allTags, id: \.self) { t in Button(t) { model.addTag(t, to: ids) } }
+                if !model.allTags.isEmpty { Divider() }
+                Button("新标签…") { batch = .edit(ids) }
+            }
+            let present = Array(Set(ids.compactMap(model.profile).flatMap(\.tags))).sorted()
+            if !present.isEmpty {
+                Menu("移除标签") {
+                    ForEach(present, id: \.self) { t in Button(t) { model.removeTag(t, from: ids) } }
+                }
             }
             if ids.count == 1 {
                 Menu("复制环境") {

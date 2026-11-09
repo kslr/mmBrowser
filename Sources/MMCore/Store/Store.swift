@@ -102,6 +102,51 @@ public final class Store: Sendable {
                 }
             }
         }
+        // 只用标签，不再有分组：重建 profile 表去掉 groupId（SQLite 不能直接删带外键的列），删掉分组表。
+        m.registerMigration("v4") { db in
+            try db.create(table: "profile_new") { t in
+                t.primaryKey("id", .text)
+                t.column("seq", .integer).notNull().unique()
+                t.column("name", .text).notNull()
+                t.column("tags", .text).notNull()
+                t.column("notes", .text).notNull()
+                t.column("startURLs", .text).notNull()
+                t.column("alwaysOpenStartURLs", .boolean).notNull().defaults(to: false)
+                t.column("proxyKind", .text)
+                t.column("proxyHost", .text)
+                t.column("proxyPort", .integer)
+                t.column("proxyUsername", .text)
+                t.column("proxyPassword", .text)
+                t.column("proxyExpiresAt", .datetime)
+                t.column("allowDirect", .boolean).notNull()
+                t.column("language", .text).notNull()
+                t.column("timezone", .text)
+                t.column("geolocation", .text).notNull()
+                t.column("windowWidth", .integer)
+                t.column("windowHeight", .integer)
+                t.column("themeColor", .text)
+                t.column("extraArgs", .text).notNull()
+                t.column("extensionIds", .text).notNull().defaults(to: "[]")
+                t.column("lastExit", .text)
+                t.column("createdAt", .datetime).notNull()
+                t.column("updatedAt", .datetime).notNull()
+                t.column("lastOpenedAt", .datetime)
+                t.column("deletedAt", .datetime)
+            }
+            let cols = ["id", "seq", "name", "tags", "notes", "startURLs", "alwaysOpenStartURLs", "proxyKind", "proxyHost",
+                        "proxyPort", "proxyUsername", "proxyPassword", "proxyExpiresAt", "allowDirect", "language", "timezone",
+                        "geolocation", "windowWidth", "windowHeight", "themeColor", "extraArgs", "extensionIds", "lastExit",
+                        "createdAt", "updatedAt", "lastOpenedAt", "deletedAt"].map { "\"\($0)\"" }.joined(separator: ", ")
+            try db.execute(sql: "INSERT INTO profile_new (\(cols)) SELECT \(cols) FROM profile")
+            try db.drop(table: "profile")
+            try db.rename(table: "profile_new", to: "profile")
+            try db.drop(table: "profileGroup")
+            try db.execute(sql: """
+                CREATE UNIQUE INDEX profile_proxy_unique
+                ON profile(lower(proxyHost), proxyPort, IFNULL(proxyUsername, ''))
+                WHERE proxyHost IS NOT NULL AND deletedAt IS NULL
+                """)
+        }
         return m
     }
 
@@ -295,42 +340,28 @@ public final class Store: Sendable {
         }
     }
 
-    // MARK: - 分组
+    // MARK: - 标签
 
-    public func groups() throws -> [ProfileGroup] {
-        try db.read { try ProfileGroup.order(Column("sortOrder"), Column("name")).fetchAll($0) }
+    /// 所有未删除环境用到的标签。
+    public func allTags() throws -> [String] {
+        Array(Set(try profiles().flatMap(\.tags))).sorted()
     }
 
-    /// 按名称取分组，不存在就创建。
-    public func group(named name: String) throws -> ProfileGroup {
-        try db.write { db in
-            if let g = try ProfileGroup.filter(Column("name") == name).fetchOne(db) { return g }
-            let maxOrder = try Int.fetchOne(db, sql: "SELECT MAX(sortOrder) FROM profileGroup") ?? 0
-            var g = ProfileGroup(name: name, sortOrder: maxOrder + 1)
-            try g.insert(db)
-            return g
+    /// 重命名标签（所有环境，含回收站）。新名称已存在时两者合并。
+    public func renameTag(_ old: String, to new: String) throws {
+        let name = new.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty, name != old else { return }
+        let ids = try profiles(includeDeleted: true).filter { $0.tags.contains(old) }.map(\.id)
+        _ = try updateMany(ids) { p in
+            var seen = Set<String>()
+            p.tags = p.tags.map { $0 == old ? name : $0 }.filter { seen.insert($0).inserted }
         }
     }
 
-    public func renameGroup(_ id: Int64, to name: String) throws {
-        try db.write { db in
-            try db.execute(sql: "UPDATE profileGroup SET name = ? WHERE id = ?", arguments: [name, id])
-        }
-    }
-
-    /// 删除分组，组内环境变为未分组（外键 ON DELETE SET NULL）。
-    public func deleteGroup(_ id: Int64) throws {
-        _ = try db.write { db in try ProfileGroup.deleteOne(db, key: id) }
-    }
-
-    /// 把一批环境移到某个分组（nil 表示未分组）。
-    public func move(_ profileIds: [String], toGroup groupId: Int64?) throws {
-        try db.write { db in
-            for id in profileIds {
-                try db.execute(sql: "UPDATE profile SET groupId = ?, updatedAt = ? WHERE id = ?",
-                               arguments: [groupId, Date(), id])
-            }
-        }
+    /// 从所有环境上移除这个标签。
+    public func deleteTag(_ tag: String) throws {
+        let ids = try profiles(includeDeleted: true).filter { $0.tags.contains(tag) }.map(\.id)
+        _ = try updateMany(ids) { $0.tags.removeAll { $0 == tag } }
     }
 }
 

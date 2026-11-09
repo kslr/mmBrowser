@@ -3,7 +3,7 @@ import SwiftUI
 
 /// 批量操作的表单。
 enum BatchSheet: Identifiable {
-    case create(groupId: Int64?)
+    case create(tag: String?)
     case edit([String])
     case assignProxies([String])
     case expiry([String])
@@ -22,7 +22,7 @@ struct BatchSheetView: View {
     let sheet: BatchSheet
     var body: some View {
         switch sheet {
-        case .create(let gid): BatchCreateView(groupId: gid)
+        case .create(let tag): BatchCreateView(tag: tag)
         case .edit(let ids): BatchEditView(ids: ids)
         case .assignProxies(let ids): AssignProxiesView(ids: ids)
         case .expiry(let ids): ExpiryView(ids: ids)
@@ -93,7 +93,7 @@ struct ProxyTextArea: View {
 struct BatchCreateView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    let groupId: Int64?
+    let tag: String?
 
     @State private var namePattern = "环境-{n}"
     @State private var startNumber = 1
@@ -101,7 +101,7 @@ struct BatchCreateView: View {
     @State private var count = 5
     @State private var proxyText = ""
     @State private var proxyKind = ProxyConfig.Kind.socks5
-    @State private var draft = ProfileDraft(defaultLanguage: LanguageTag.auto, groupId: nil)
+    @State private var draft = ProfileDraft(defaultLanguage: LanguageTag.auto)
     @State private var language = LanguageTag.auto
     @State private var expiryEnabled = false
     @State private var expiry = Date().addingTimeInterval(30 * 86_400)
@@ -133,11 +133,9 @@ struct BatchCreateView: View {
                     Text("代理（每个代理新建一个环境）")
                 }
                 Section("共同设置") {
-                    Picker("分组", selection: $draft.groupId) {
-                        Text("未分组").tag(Int64?.none)
-                        ForEach(model.groups) { g in Text(g.name).tag(Int64?.some(g.id!)) }
+                    LabeledContent("标签") {
+                        TagTokenField(tags: $draft.tags, suggestions: model.allTags, placeholder: "可选，输入后按回车")
                     }
-                    TextField("标签", text: $draft.tagsText, prompt: Text("用逗号分隔"))
                     LanguagePicker(language: $language)
                     Picker("时区", selection: Binding(
                         get: { draft.timezoneAuto ? "auto" : draft.timezone },
@@ -155,7 +153,7 @@ struct BatchCreateView: View {
         }
         .frame(width: 600, height: 700)
         .onAppear {
-            draft = ProfileDraft(defaultLanguage: model.defaultLanguage, groupId: groupId)
+            draft = ProfileDraft(defaultLanguage: model.defaultLanguage, tags: tag.map { [$0] } ?? [])
             language = model.defaultLanguage
         }
     }
@@ -215,8 +213,8 @@ struct BatchEditView: View {
     let ids: [String]
 
     @State private var edit = BatchEdit()
-    @State private var addTagsText = ""
-    @State private var removeTagsText = ""
+    @State private var addTags: [String] = []
+    @State private var removeTags: [String] = []
     @State private var tzAuto = true
     @State private var tz = TimeZone.current.identifier
     @State private var windowPreset = "默认"
@@ -228,15 +226,12 @@ struct BatchEditView: View {
         VStack(spacing: 0) {
             Form {
                 Section {
-                    Toggle("修改分组", isOn: $edit.setGroup)
-                    if edit.setGroup {
-                        Picker("分组", selection: $edit.groupId) {
-                            Text("未分组").tag(Int64?.none)
-                            ForEach(model.groups) { g in Text(g.name).tag(Int64?.some(g.id!)) }
-                        }
+                    LabeledContent("添加标签") {
+                        TagTokenField(tags: $addTags, suggestions: model.allTags, placeholder: "可选")
                     }
-                    TextField("添加标签", text: $addTagsText, prompt: Text("用逗号分隔"))
-                    TextField("移除标签", text: $removeTagsText, prompt: Text("用逗号分隔"))
+                    LabeledContent("移除标签") {
+                        TagTokenField(tags: $removeTags, suggestions: model.allTags, placeholder: "可选")
+                    }
                 } header: { Text("将修改 \(ids.count) 个环境，只改打开了开关的项") }
 
                 Section("环境参数") {
@@ -298,9 +293,8 @@ struct BatchEditView: View {
 
     private func apply() {
         var e = edit
-        let split: (String) -> [String] = { $0.split(whereSeparator: { $0 == "," || $0 == "，" }).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
-        e.addTags = split(addTagsText)
-        e.removeTags = split(removeTagsText)
+        e.addTags = addTags
+        e.removeTags = removeTags
         if e.setLanguage, !LanguageTag.isValidSetting(e.language) { error = "语言代码无效：\(e.language)"; return }
         if e.setTimezone { e.timezone = tzAuto ? nil : tz }
         if e.setWindow {

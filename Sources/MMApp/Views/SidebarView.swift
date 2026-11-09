@@ -4,10 +4,9 @@ import SwiftUI
 struct SidebarView: View {
     @Environment(AppModel.self) private var model
     @Binding var selection: SidebarItem?
-    @State private var newGroupName = ""
-    @State private var showingNewGroup = false
-    @State private var renaming: ProfileGroup?
+    @State private var renaming: String?
     @State private var renameText = ""
+    @State private var confirmDelete: String?
 
     var body: some View {
         List(selection: $selection) {
@@ -27,52 +26,46 @@ struct SidebarView: View {
                 }
                 .tag(SidebarItem.proxies)
             }
-            Section {
-                ForEach(model.groups) { g in
-                    row(g.name, "folder", model.profiles(in: .group(g.id!)).count)
-                        .tag(SidebarItem.group(g.id!))
+            Section("标签") {
+                ForEach(model.allTags, id: \.self) { t in
+                    row(t, "tag", model.profiles(in: .tag(t)).count)
+                        .tag(SidebarItem.tag(t))
                         .contextMenu {
-                            Button("重命名…") { renameText = g.name; renaming = g }
-                            Button("删除分组（环境保留，变为未分组）", role: .destructive) {
-                                if selection == .group(g.id!) { selection = .all }
-                                model.deleteGroup(g.id!)
-                            }
+                            Button("重命名…") { renameText = t; renaming = t }
+                            Button("删除标签…", role: .destructive) { confirmDelete = t }
                         }
                 }
-                row("未分组", "tray", model.profiles(in: .ungrouped).count)
-                    .tag(SidebarItem.ungrouped)
-            } header: {
-                HStack {
-                    Text("分组")
-                    Spacer()
-                    Button { newGroupName = ""; showingNewGroup = true } label: { Image(systemName: "plus") }
-                        .buttonStyle(.borderless)
-                        .help("新建分组")
-                }
-            }
-            if !model.allTags.isEmpty {
-                Section("标签") {
-                    ForEach(model.allTags, id: \.self) { t in
-                        row(t, "tag", model.profiles(in: .tag(t)).count).tag(SidebarItem.tag(t))
-                    }
-                }
+                row("无标签", "tag.slash", model.profiles(in: .untagged).count)
+                    .tag(SidebarItem.untagged)
             }
             Section {
                 row("回收站", "trash", model.trash.count).tag(SidebarItem.trash)
             }
         }
         .listStyle(.sidebar)
-        .alert("新建分组", isPresented: $showingNewGroup) {
-            TextField("分组名称", text: $newGroupName)
-            Button("创建") {
-                if let id = model.createGroup(newGroupName) { selection = .group(id) }
+        .alert("重命名标签", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
+            TextField("标签名称", text: $renameText)
+            Button("保存") {
+                if let old = renaming {
+                    model.renameTag(old, to: renameText)
+                    let new = renameText.trimmingCharacters(in: .whitespaces)
+                    if selection == .tag(old), !new.isEmpty { selection = .tag(new) }
+                }
             }
             Button("取消", role: .cancel) {}
+        } message: {
+            Text("所有环境上的这个标签都会改名；如果新名称已经存在，两者会合并。")
         }
-        .alert("重命名分组", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
-            TextField("分组名称", text: $renameText)
-            Button("保存") { if let g = renaming { model.renameGroup(g.id!, to: renameText) } }
-            Button("取消", role: .cancel) {}
+        .confirmationDialog("删除标签「\(confirmDelete ?? "")」？", isPresented: Binding(
+            get: { confirmDelete != nil }, set: { if !$0 { confirmDelete = nil } })) {
+            Button("删除标签", role: .destructive) {
+                if let t = confirmDelete {
+                    if selection == .tag(t) { selection = .all }
+                    model.deleteTag(t)
+                }
+            }
+        } message: {
+            Text("只是从 \(model.profiles(in: .tag(confirmDelete ?? "")).count) 个环境上去掉这个标签，环境本身不会删除。")
         }
     }
 

@@ -13,7 +13,6 @@ public enum ProfileBackup {
     struct Manifest: Codable {
         var formatVersion: Int
         var exportedAt: Date
-        var groupName: String?
         var profile: Profile
     }
 
@@ -41,8 +40,7 @@ public enum ProfileBackup {
         let pkg = work.appendingPathComponent("pkg")
         try fm.createDirectory(at: pkg, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
 
-        let groupName = try store.groups().first { $0.id == p.groupId }?.name
-        let manifest = Manifest(formatVersion: formatVersion, exportedAt: Date(), groupName: groupName, profile: p)
+        let manifest = Manifest(formatVersion: formatVersion, exportedAt: Date(), profile: p)
         let enc = JSONEncoder()
         enc.outputFormatting = [.prettyPrinted, .sortedKeys]
         try enc.encode(manifest).write(to: pkg.appendingPathComponent("profile.json"))
@@ -86,7 +84,6 @@ public enum ProfileBackup {
             p.proxy = nil
             p.proxyExpiresAt = nil
         }
-        p.groupId = try manifest.groupName.map { try store.group(named: $0).id } ?? nil
         let saved = try store.insert(p)
 
         let src = work.appendingPathComponent("data")

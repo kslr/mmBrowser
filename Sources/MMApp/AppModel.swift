@@ -25,8 +25,7 @@ enum RunState {
 enum SidebarItem: Hashable {
     case all
     case running
-    case ungrouped
-    case group(Int64)
+    case untagged
     case tag(String)
     case proxies
     case trash
@@ -50,7 +49,6 @@ final class AppModel {
 
     private(set) var profiles: [Profile] = []
     private(set) var trash: [Profile] = []
-    private(set) var groups: [ProfileGroup] = []
     private(set) var states: [String: RunState] = [:]
     var lastError: [String: String] = [:]
     /// 启动时遇到的非致命问题（如扩展没装好），显示在状态列的提示里
@@ -127,12 +125,11 @@ final class AppModel {
     private func startObserving(_ store: Store) {
         observationTask = Task { [weak self] in
             let observation = ValueObservation.tracking { db in
-                (try Profile.order(Column("seq")).fetchAll(db),
-                 try ProfileGroup.order(Column("sortOrder"), Column("name")).fetchAll(db))
+                try Profile.order(Column("seq")).fetchAll(db)
             }
             do {
-                for try await (all, groups) in observation.values(in: store.db) {
-                    self?.apply(all: all, groups: groups)
+                for try await all in observation.values(in: store.db) {
+                    self?.apply(all: all)
                 }
             } catch {
                 self?.alert = AppAlert(title: "数据库错误", message: error.localizedDescription)
@@ -140,18 +137,17 @@ final class AppModel {
         }
     }
 
-    private func apply(all: [Profile], groups: [ProfileGroup]) {
+    private func apply(all: [Profile]) {
         profiles = all.filter { !$0.isDeleted }
         trash = all.filter(\.isDeleted).sorted { ($0.deletedAt ?? .distantPast) > ($1.deletedAt ?? .distantPast) }
-        self.groups = groups
     }
 
     /// 别的进程（比如 mmctl）改了数据库时，本进程的观察收不到，切回应用时手动刷新一次。
     /// 本进程内的写入不要调用它：数据库观察会按顺序推送最终状态，手动刷新反而可能被随后到达的旧推送覆盖。
     func refreshFromDisk() {
         guard let store else { return }
-        if let all = try? store.profiles(includeDeleted: true), let groups = try? store.groups() {
-            apply(all: all, groups: groups)
+        if let all = try? store.profiles(includeDeleted: true) {
+            apply(all: all)
         }
         scanOrphans()
     }
@@ -166,11 +162,6 @@ final class AppModel {
         return profiles.filter { $0.id != p.id && $0.lastExit?.ip == ip }
     }
 
-    func groupName(_ id: Int64?) -> String? {
-        guard let id else { return nil }
-        return groups.first { $0.id == id }?.name
-    }
-
     func state(of id: String) -> RunState { states[id] ?? .idle }
 
     var runningCount: Int { states.values.filter { if case .running = $0 { true } else { false } }.count }
@@ -179,8 +170,7 @@ final class AppModel {
         switch item {
         case .all: profiles
         case .running: profiles.filter { state(of: $0.id).isActive }
-        case .ungrouped: profiles.filter { $0.groupId == nil }
-        case .group(let id): profiles.filter { $0.groupId == id }
+        case .untagged: profiles.filter { $0.tags.isEmpty }
         case .tag(let t): profiles.filter { $0.tags.contains(t) }
         case .proxies: profiles
         case .trash: trash
@@ -392,30 +382,29 @@ final class AppModel {
         }
     }
 
-    func move(_ ids: [String], toGroup groupId: Int64?) {
-        try? store?.move(ids, toGroup: groupId)
+    /// 给一批环境加标签 / 去标签。
+    func addTag(_ tag: String, to ids: [String]) {
+        let t = tag.trimmingCharacters(in: .whitespaces)
+        guard !t.isEmpty else { return }
+        _ = try? store?.updateMany(ids) { if !$0.tags.contains(t) { $0.tags.append(t) } }
     }
 
-    @discardableResult
-    func createGroup(_ name: String) -> Int64? {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return nil }
-        do { return try store?.group(named: trimmed).id } catch {
-            alert = AppAlert(title: "创建分组失败", message: error.localizedDescription)
-            return nil
+    func removeTag(_ tag: String, from ids: [String]) {
+        _ = try? store?.updateMany(ids) { $0.tags.removeAll { $0 == tag } }
+    }
+
+    /// 重命名标签（所有环境）；新名称已存在时合并。
+    func renameTag(_ old: String, to new: String) {
+        do { try store?.renameTag(old, to: new) } catch {
+            alert = AppAlert(title: "重命名标签失败", message: error.localizedDescription)
         }
     }
 
-    func renameGroup(_ id: Int64, to name: String) {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        do { try store?.renameGroup(id, to: trimmed) } catch {
-            alert = AppAlert(title: "重命名失败", message: "可能已有同名分组。")
+    /// 从所有环境上移除这个标签（环境本身不受影响）。
+    func deleteTag(_ tag: String) {
+        do { try store?.deleteTag(tag) } catch {
+            alert = AppAlert(title: "删除标签失败", message: error.localizedDescription)
         }
-    }
-
-    func deleteGroup(_ id: Int64) {
-        try? store?.deleteGroup(id)
     }
 
     func revealInFinder(_ id: String) {

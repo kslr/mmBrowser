@@ -35,8 +35,6 @@ struct ProfileOptions: ParsableArguments {
     var urls: [String] = []
     @Option(help: "每次启动都打开启动页：true 或 false")
     var alwaysOpenUrls: Bool?
-    @Option(help: "分组名（不存在会自动创建）")
-    var group: String?
     @Option(name: .customLong("tag"), help: "标签，可以重复")
     var tags: [String] = []
     @Option(help: "备注")
@@ -69,7 +67,6 @@ struct ProfileOptions: ParsableArguments {
             }
         }
         if !urls.isEmpty { p.startURLs = urls }
-        if let group { p.groupId = try store.group(named: group).id }
         if !tags.isEmpty { p.tags = tags }
         if let notes { p.notes = notes }
         if let window {
@@ -99,12 +96,11 @@ struct ProfileOptions: ParsableArguments {
 extension ProxyConfig.Kind: ExpressibleByArgument {}
 extension GeolocationPolicy: ExpressibleByArgument {}
 
-func describe(_ p: Profile, groups: [ProfileGroup], running: Int32?) -> String {
-    let group = groups.first { $0.id == p.groupId }?.name
+func describe(_ p: Profile, running: Int32?) -> String {
     var lines = [
         "#\(p.seq)  \(p.name)\(running.map { "  [运行中 PID \($0)]" } ?? "")",
         "  id:        \(p.id)",
-        "  分组/标签:  \(group ?? "-") / \(p.tags.isEmpty ? "-" : p.tags.joined(separator: ", "))",
+        "  标签:      \(p.tags.isEmpty ? "-" : p.tags.joined(separator: ", "))",
         "  代理:      \(p.proxy?.displayString ?? (p.allowDirect ? "直连（已允许）" : "未配置"))",
         "  语言/时区:  \(p.language == LanguageTag.auto ? "自动（跟随出口 IP）" : p.language) / \(p.timezone ?? "自动（跟随出口 IP）")",
         "  定位权限:   \(p.geolocation == .block ? "禁止" : "询问")",
@@ -136,7 +132,7 @@ struct Create: AsyncParsableCommand {
             throw ValidationError("请用 --proxy 指定代理，或者用 --direct 明确允许直连")
         }
         let saved = try store.insert(p)
-        print(describe(saved, groups: try store.groups(), running: nil))
+        print(describe(saved, running: nil))
     }
 }
 
@@ -147,15 +143,13 @@ struct List: AsyncParsableCommand {
     func run() async throws {
         let store = try openStore()
         let launcher = try? BrowserLauncher(store: store, chrome: ChromeInstallation())
-        let groups = try store.groups()
         let rows = try store.profiles(onlyDeleted: deleted)
         if rows.isEmpty { print(deleted ? "回收站是空的" : "还没有环境，用 mmctl create 新建"); return }
         for p in rows {
-            let group = groups.first { $0.id == p.groupId }?.name ?? "-"
             let status = launcher?.runningPID(of: p.id).map { _ in "运行中" } ?? ""
             let proxy = p.proxy?.displayString ?? (p.allowDirect ? "直连" : "未配置")
             let exit = p.lastExit.map { "\($0.ip) \($0.countryCode ?? "")" } ?? ""
-            print(String(format: "#%-4d %@", p.seq, "\(p.name)  [\(group)]  \(proxy)  \(exit)  \(p.language)  \(status)"))
+            print(String(format: "#%-4d %@", p.seq, "\(p.name)  \(p.tags.isEmpty ? "" : "[" + p.tags.joined(separator: ",") + "]  ")\(proxy)  \(exit)  \(p.language)  \(status)"))
         }
     }
 }
@@ -168,7 +162,7 @@ struct Show: AsyncParsableCommand {
         let store = try openStore()
         let p = try store.resolve(ref, includeDeleted: true)
         let pid = (try? BrowserLauncher(store: store, chrome: ChromeInstallation()))?.runningPID(of: p.id)
-        print(describe(p, groups: try store.groups(), running: pid))
+        print(describe(p, running: pid))
         print("  目录:      \(store.paths.profileDir(p.id).path)")
     }
 }
@@ -185,7 +179,7 @@ struct Set_: AsyncParsableCommand {
         if let name { p.name = name }
         try options.apply(to: &p, store: store)
         try store.update(p)
-        print(describe(try store.resolve(p.id), groups: try store.groups(), running: nil))
+        print(describe(try store.resolve(p.id), running: nil))
     }
 }
 
