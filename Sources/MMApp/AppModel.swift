@@ -28,6 +28,7 @@ enum SidebarItem: Hashable {
     case ungrouped
     case group(Int64)
     case tag(String)
+    case proxies
     case trash
 }
 
@@ -51,9 +52,13 @@ final class AppModel {
     private(set) var trash: [Profile] = []
     private(set) var groups: [ProfileGroup] = []
     private(set) var states: [String: RunState] = [:]
-    private(set) var lastError: [String: String] = [:]
-    private(set) var checking: Set<String> = []
+    var lastError: [String: String] = [:]
+    /// 启动时遇到的非致命问题（如扩展没装好），显示在状态列的提示里
+    var lastWarning: [String: String] = [:]
+    var checking: Set<String> = []
     var alert: AppAlert?
+    /// 扩展库变化时递增，用来刷新依赖它的界面
+    var extensionLibraryVersion = 0
 
     private var observationTask: Task<Void, Never>?
     private var orphanTimer: Timer?
@@ -68,19 +73,38 @@ final class AppModel {
             setupError = "无法打开数据目录 \(paths.root.path)：\(error.localizedDescription)"
         }
         reloadChrome()
+        purgeOldTrash()
         scanOrphans()
         orphanTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
             MainActor.assumeIsolated { AppModel.shared.scanOrphans() }
         }
     }
 
+    func purgeOldTrash() {
+        guard let store else { return }
+        let ids = (try? store.purgeTrash(olderThanDays: trashRetentionDays)) ?? []
+        if !ids.isEmpty { refreshFromDisk() }
+    }
+
     // MARK: - 设置
 
     static let chromePathKey = "chromePath"
     static let defaultLanguageKey = "defaultLanguage"
+    static let maxRunningKey = "maxRunning"
+    static let trashDaysKey = "trashRetentionDays"
+
+    var maxRunning: Int {
+        let v = UserDefaults.standard.integer(forKey: Self.maxRunningKey)
+        return v > 0 ? v : 10
+    }
+
+    var trashRetentionDays: Int {
+        let v = UserDefaults.standard.integer(forKey: Self.trashDaysKey)
+        return v > 0 ? v : 30
+    }
 
     var defaultLanguage: String {
-        UserDefaults.standard.string(forKey: Self.defaultLanguageKey) ?? "en-US"
+        UserDefaults.standard.string(forKey: Self.defaultLanguageKey) ?? LanguageTag.auto
     }
 
     func reloadChrome() {
@@ -123,6 +147,7 @@ final class AppModel {
     }
 
     /// 别的进程（比如 mmctl）改了数据库时，本进程的观察收不到，切回应用时手动刷新一次。
+    /// 本进程内的写入不要调用它：数据库观察会按顺序推送最终状态，手动刷新反而可能被随后到达的旧推送覆盖。
     func refreshFromDisk() {
         guard let store else { return }
         if let all = try? store.profiles(includeDeleted: true), let groups = try? store.groups() {
@@ -157,6 +182,7 @@ final class AppModel {
         case .ungrouped: profiles.filter { $0.groupId == nil }
         case .group(let id): profiles.filter { $0.groupId == id }
         case .tag(let t): profiles.filter { $0.tags.contains(t) }
+        case .proxies: profiles
         case .trash: trash
         }
     }
@@ -167,8 +193,17 @@ final class AppModel {
 
     // MARK: - 启动 / 关闭
 
+    /// 批量启动。超过"同时运行上限"的部分不启动，并提示。
     func launch(_ ids: [String]) {
-        for id in ids { launch(id) }
+        let toStart = ids.filter { !state(of: $0).isActive }
+        let alreadyActive = ids.filter { state(of: $0).isActive }
+        alreadyActive.forEach(activate)
+        let room = max(0, maxRunning - states.values.filter(\.isActive).count)
+        for id in toStart.prefix(room) { launch(id) }
+        if toStart.count > room {
+            alert = AppAlert(title: "已达到同时运行上限（\(maxRunning) 个）",
+                             message: "还有 \(toStart.count - room) 个环境没有启动。可以先关闭一些环境，或在设置里调高上限。")
+        }
     }
 
     func launch(_ id: String) {
@@ -193,13 +228,19 @@ final class AppModel {
                     case .exitChecked: "出口正常"
                     case .seeding: "写入配置"
                     case .initializing: "首次初始化"
+                    case .installingExtensions: "安装扩展"
+                    case .warning(let w): w
                     case .startingChrome: "启动 Chrome"
+                    }
+                    if case .warning(let w) = stage {
+                        Task { @MainActor in AppModel.shared.lastWarning[id] = w }
                     }
                     Task { @MainActor in
                         if case .launching = AppModel.shared.state(of: id) { AppModel.shared.states[id] = .launching(text) }
                     }
                 })
                 states[id] = .running(running)
+                refreshExtensionNames()
                 running.onExit {
                     Task { @MainActor in AppModel.shared.browserExited(id) }
                 }
@@ -281,7 +322,7 @@ final class AppModel {
     // MARK: - 检测
 
     func check(_ id: String) {
-        guard let store, let p = profile(id), !checking.contains(id) else { return }
+        guard let store, let p = fresh(id), !checking.contains(id) else { return }
         let upstream: Upstream
         if let proxy = p.proxy { upstream = .proxy(proxy) }
         else if p.allowDirect { upstream = .direct }
@@ -306,9 +347,21 @@ final class AppModel {
     @discardableResult
     func save(_ profile: Profile, isNew: Bool) throws -> Profile {
         guard let store else { throw StoreError.notFound("数据库未打开") }
-        if isNew { return try store.insert(profile) }
-        try store.update(profile)
-        return profile
+        var p = profile
+        if isNew {
+            // 名称留空：先插入拿到序号，再命名为"环境-序号"
+            let autoName = p.name.isEmpty
+            if autoName { p.name = "环境" }
+            var saved = try store.insert(p)
+            if autoName {
+                saved.name = "环境-\(saved.seq)"
+                try store.update(saved)
+            }
+            return saved
+        }
+        if p.name.isEmpty { p.name = "环境-\(p.seq)" }
+        try store.update(p)
+        return p
     }
 
     func moveToTrash(_ ids: [String]) {

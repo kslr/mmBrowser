@@ -3,8 +3,13 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppModel.self) private var model
-    @State private var sidebar: SidebarItem? = .all
+    @State private var sidebar: SidebarItem?
+
+    init(initialSidebar: SidebarItem = .all) {
+        _sidebar = State(initialValue: initialSidebar)
+    }
     @State private var editing: EditorTarget?
+    @State private var batch: BatchSheet?
 
     var body: some View {
         @Bindable var model = model
@@ -12,10 +17,19 @@ struct ContentView: View {
             SidebarView(selection: $sidebar)
                 .navigationSplitViewColumnWidth(min: 180, ideal: 210, max: 280)
         } detail: {
-            ProfileListView(scope: sidebar ?? .all, editing: $editing)
+            if sidebar == .proxies {
+                ProxyListView(batch: $batch, editing: $editing)
+            } else {
+                ProfileListView(scope: sidebar ?? .all, editing: $editing, batch: $batch,
+                                showProxies: { sidebar = .proxies })
+            }
         }
         .sheet(item: $editing) { target in
             ProfileEditorView(target: target)
+                .environment(model)
+        }
+        .sheet(item: $batch) { sheet in
+            BatchSheetView(sheet: sheet)
                 .environment(model)
         }
         .alert(item: $model.alert) { a in

@@ -104,11 +104,11 @@ public final class LocalProxyServer: @unchecked Sendable {
             client.armDeadline(10)
             target = try await readRequest(client)
             client.disarmDeadline()
-        } catch ProxyError.closed {
-            return  // 客户端没发请求就关了（如 Chrome 预建连接后放弃），不算错误
-        } catch {
-            onEvent?(.tunnelFailed(nil, "本地握手失败：\(error.localizedDescription)"))
+        } catch ProxyError.protocolError(let why) {
+            onEvent?(.tunnelFailed(nil, "本地握手失败：\(why)"))
             return
+        } catch {
+            return  // 客户端没发完请求就断开或重置（Chrome 预建连接后放弃很常见），不算错误
         }
         guard let target else { return }
 

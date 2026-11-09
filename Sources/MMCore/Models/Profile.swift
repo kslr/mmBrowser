@@ -26,6 +26,8 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
     public var proxyPort: Int?
     public var proxyUsername: String?
     public var proxyPassword: String?
+    /// 代理到期日（手动填写，用于提醒续费）。
+    public var proxyExpiresAt: Date?
     /// 显式允许直连（没有代理时才有意义）。默认 false：没有代理就拒绝启动。
     public var allowDirect: Bool
 
@@ -39,6 +41,8 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
     /// 工具栏主题色 `#RRGGBB`，nil 表示根据 id 自动生成。
     public var themeColor: String?
     public var extraArgs: [String]
+    /// 要预装的扩展（Chrome 应用商店 ID）。
+    public var extensionIds: [String]
 
     public var lastExit: ExitInfo?
     public var createdAt: Date
@@ -50,7 +54,7 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
         id: String = UUID().uuidString.lowercased(),
         name: String,
         proxy: ProxyConfig? = nil,
-        language: String = "en-US",
+        language: String = LanguageTag.auto,
         timezone: String? = nil,
         startURLs: [String] = [],
         groupId: Int64? = nil,
@@ -71,6 +75,7 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
         self.timezone = timezone
         self.geolocation = .block
         self.extraArgs = []
+        self.extensionIds = []
         self.createdAt = now
         self.updatedAt = now
         self.proxy = proxy

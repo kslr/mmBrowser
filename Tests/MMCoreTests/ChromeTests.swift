@@ -15,8 +15,8 @@ struct ChromeTests {
     @Test("一步启动：代理与防泄漏参数、语言写法不会被当成网址；启动页按需附加")
     func plan() {
         let dir = URL(fileURLWithPath: "/tmp/mm/p1")
-        let first = LaunchPlan.make(profile: sampleProfile(), userDataDir: dir, localProxyPort: 40000,
-                                    timezone: "Asia/Tokyo", openStartURLs: true)
+        let first = LaunchPlan.make(profile: sampleProfile(), language: "ja-JP", userDataDir: dir, localProxyPort: 40000,
+                                    timezone: "Asia/Tokyo", checkPageURL: "https://check.example/", openStartURLs: true)
         #expect(first.environment == ["TZ": "Asia/Tokyo"])
         let args = first.arguments
         #expect(args.contains("--user-data-dir=/tmp/mm/p1"))
@@ -30,28 +30,36 @@ struct ChromeTests {
         #expect(args.contains("--force-dark-mode"))
         #expect(!args.contains("--no-startup-window"))
         #expect(!args.contains("-AppleLocale"))
-        #expect(args.suffix(4) == ["-AppleLanguages", "(\"ja-JP\", \"<\")", "https://example.com/", "https://example.org/"])
+        #expect(args.suffix(5) == ["-AppleLanguages", "(\"ja-JP\", \"<\")", "https://check.example/",
+                                   "https://example.com/", "https://example.org/"])
 
-        let later = LaunchPlan.make(profile: sampleProfile(), userDataDir: dir, localProxyPort: 40000,
-                                    timezone: "Asia/Tokyo", openStartURLs: false)
-        #expect(later.arguments.suffix(2) == ["-AppleLanguages", "(\"ja-JP\", \"<\")"])
+        // 之后的启动：恢复会话 + 检测页；没有检测页时什么网址都不带
+        let later = LaunchPlan.make(profile: sampleProfile(), language: "ja-JP", userDataDir: dir, localProxyPort: 40000,
+                                    timezone: "Asia/Tokyo", checkPageURL: "https://check.example/", openStartURLs: false)
+        #expect(later.arguments.suffix(3) == ["-AppleLanguages", "(\"ja-JP\", \"<\")", "https://check.example/"])
+        let none = LaunchPlan.make(profile: sampleProfile(), language: "ja-JP", userDataDir: dir, localProxyPort: 40000,
+                                   timezone: "Asia/Tokyo", checkPageURL: nil, openStartURLs: false)
+        #expect(none.arguments.suffix(2) == ["-AppleLanguages", "(\"ja-JP\", \"<\")"])
     }
 
     @Test("非法语言代码回落到 en-US，避免拼坏 plist")
     func badLanguage() {
-        var p = sampleProfile(); p.language = "ja\", \"x"
-        let plan = LaunchPlan.make(profile: p, userDataDir: URL(fileURLWithPath: "/tmp/x"), localProxyPort: 1,
-                                   timezone: "UTC", openStartURLs: false)
+        let plan = LaunchPlan.make(profile: sampleProfile(), language: "ja\", \"x", userDataDir: URL(fileURLWithPath: "/tmp/x"),
+                                   localProxyPort: 1, timezone: "UTC", checkPageURL: nil, openStartURLs: false)
         #expect(plan.arguments.contains("(\"en-US\", \"<\")"))
         #expect(LanguageTag.isValid("zh-Hant-TW"))
         #expect(!LanguageTag.isValid("en_US"))
+        #expect(LanguageTag.resolve("auto", countryCode: "JP") == "ja-JP")
+        #expect(LanguageTag.resolve("auto", countryCode: "XX") == "en-US")
+        #expect(LanguageTag.resolve("de-DE", countryCode: "JP") == "de-DE")
+        #expect(LanguageTag.isValidSetting("auto") && !LanguageTag.isValid("auto"))
     }
 
     @Test("直连环境不带代理参数")
     func directPlan() {
         var p = sampleProfile(); p.proxy = nil; p.allowDirect = true
-        let plan = LaunchPlan.make(profile: p, userDataDir: URL(fileURLWithPath: "/tmp/x"), localProxyPort: nil,
-                                   timezone: "UTC", openStartURLs: false)
+        let plan = LaunchPlan.make(profile: p, language: "en-US", userDataDir: URL(fileURLWithPath: "/tmp/x"),
+                                   localProxyPort: nil, timezone: "UTC", checkPageURL: nil, openStartURLs: false)
         #expect(!plan.arguments.contains { $0.hasPrefix("--proxy-server") })
     }
 
@@ -66,7 +74,7 @@ struct ChromeTests {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("mmseed-\(UUID().uuidString)")
         defer { try? FileManager.default.removeItem(at: dir) }
         var p = sampleProfile()
-        try ProfileSeed.apply(profile: p, userDataDir: dir)
+        try ProfileSeed.apply(profile: p, language: p.language, userDataDir: dir)
 
         let prefsURL = dir.appendingPathComponent("Default/Preferences")
         var prefs = try ProfileSeed.readJSON(prefsURL)
@@ -79,7 +87,7 @@ struct ChromeTests {
         try ProfileSeed.writeJSON(prefs, to: prefsURL)
 
         p.name = "改名"; p.geolocation = .ask
-        try ProfileSeed.apply(profile: p, userDataDir: dir)
+        try ProfileSeed.apply(profile: p, language: p.language, userDataDir: dir)
         prefs = try ProfileSeed.readJSON(prefsURL)
         #expect((prefs["profile"] as? [String: Any])?["name"] as? String == "改名")
         #expect(((prefs["profile"] as? [String: Any])?["default_content_setting_values"] as? [String: Any])?["geolocation"] as? Int == 3)
@@ -90,5 +98,54 @@ struct ChromeTests {
         #expect(info?["name"] as? String == "改名")
         let mode = try FileManager.default.attributesOfItem(atPath: prefsURL.path)[.posixPermissions] as? Int
         #expect(mode == 0o600)
+    }
+}
+
+@Suite("窗口排列")
+struct ArrangeTests {
+    @Test @MainActor func grid() {
+        let area = CGRect(x: 0, y: 25, width: 1200, height: 800)
+        #expect(WindowArranger.gridFrames(count: 0, in: area).isEmpty)
+        let f4 = WindowArranger.gridFrames(count: 4, in: area)
+        #expect(f4.count == 4)
+        #expect(f4[0].minX == 6 && f4[0].minY == 31 && f4[1].minX > f4[0].maxX && f4[2].minY > f4[0].maxY)
+        let f5 = WindowArranger.gridFrames(count: 5, in: area)  // 3 列 2 行
+        #expect(Set(f5.map(\.minY)).count == 2 && Set(f5.map(\.minX)).count == 3)
+        #expect(f5.allSatisfy { area.contains($0) })
+    }
+}
+
+@Suite("会话文件")
+struct SessionTests {
+    /// 构造一条 SNSS 命令：uint16 长度（含命令字节）+ 命令字节 + 负载
+    func cmd(_ id: UInt8, _ payload: [UInt8]) -> [UInt8] {
+        let size = payload.count + 1
+        return [UInt8(size & 0xFF), UInt8(size >> 8), id] + payload
+    }
+    func le(_ v: Int32) -> [UInt8] { withUnsafeBytes(of: v.littleEndian) { Array($0) } }
+    func nav(tab: Int32, index: Int32, url: String) -> [UInt8] {
+        var u = Array(url.utf8); while u.count % 4 != 0 { u.append(0) }
+        let body = le(tab) + le(index) + le(Int32(url.utf8.count)) + u
+        return cmd(6, le(Int32(body.count)) + body)
+    }
+
+    @Test func replay() {
+        var file: [UInt8] = Array("SNSS".utf8) + le(3)
+        file += cmd(0, le(1) + le(10))                       // tab 10 在窗口 1
+        file += nav(tab: 10, index: 0, url: "https://www.browserscan.net/")
+        file += nav(tab: 11, index: 0, url: "https://a.com/")
+        file += nav(tab: 11, index: 1, url: "https://a.com/next")
+        file += cmd(7, le(11) + le(1))                        // tab 11 选中第 1 条
+        file += nav(tab: 12, index: 0, url: "https://closed.com/")
+        file += cmd(16, le(12) + [0, 0, 0, 0] + [UInt8](repeating: 0, count: 8))  // 关掉 tab 12
+        #expect(SessionInspector.parse(Data(file)) == ["https://www.browserscan.net/", "https://a.com/next"])
+
+        // 关掉检测页所在的窗口
+        let closedWindow = file + cmd(17, le(1) + [0, 0, 0, 0] + [UInt8](repeating: 0, count: 8))
+        #expect(SessionInspector.parse(Data(closedWindow)) == ["https://a.com/next"])
+
+        #expect(SessionInspector.parse(Data("XXXX".utf8)) == nil)
+        #expect(SessionInspector.sameSite("https://www.browserscan.net/", "https://browserscan.net/x?y"))
+        #expect(!SessionInspector.sameSite("https://ipinfo.io/", "https://browserscan.net/"))
     }
 }

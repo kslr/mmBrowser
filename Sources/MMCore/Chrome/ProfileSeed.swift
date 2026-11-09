@@ -5,7 +5,7 @@ import Foundation
 /// 只写不受完整性校验的项（名称、主题色、定位权限、语言、WebRTC 等），每次启动前都会更新。
 /// 受校验的项（如启动时恢复会话）由 `ProfileInitializer` 通过 Chrome 自己的设置接口写入。
 public enum ProfileSeed {
-    public static func apply(profile: Profile, userDataDir: URL) throws {
+    public static func apply(profile: Profile, language: String, userDataDir: URL) throws {
         let fm = FileManager.default
         let defaultDir = userDataDir.appendingPathComponent("Default", isDirectory: true)
         let prefsURL = defaultDir.appendingPathComponent("Preferences")
@@ -23,8 +23,8 @@ public enum ProfileSeed {
         set(&prefs, "browser.theme.user_color2", color)
         set(&prefs, "browser.theme.color_variant", 1)   // tonal spot，与"自定义 Chrome"里选颜色的效果一致
         set(&prefs, "browser.theme.color_variant2", 1)
-        set(&prefs, "intl.accept_languages", CountryLocale.acceptLanguage(for: profile.language))
-        set(&prefs, "intl.selected_languages", CountryLocale.acceptLanguage(for: profile.language))
+        set(&prefs, "intl.accept_languages", CountryLocale.acceptLanguage(for: language))
+        set(&prefs, "intl.selected_languages", CountryLocale.acceptLanguage(for: language))
         set(&prefs, "webrtc.ip_handling_policy", "disable_non_proxied_udp")
         set(&prefs, "webrtc.multiple_routes_enabled", false)
         set(&prefs, "webrtc.nonproxied_udp_enabled", false)

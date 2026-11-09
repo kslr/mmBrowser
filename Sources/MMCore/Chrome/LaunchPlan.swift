@@ -9,14 +9,18 @@ public struct LaunchPlan: Sendable, Equatable {
     public var arguments: [String]
     public var environment: [String: String]
 
+    /// - language: 实际使用的语言（"自动"已经按出口解析好）
+    /// - checkPageURL: 每次启动都打开的检测页
     public static func make(
         profile: Profile,
+        language resolved: String,
         userDataDir: URL,
         localProxyPort: UInt16?,
         timezone: String,
+        checkPageURL: String?,
         openStartURLs: Bool
     ) -> LaunchPlan {
-        let language = LanguageTag.isValid(profile.language) ? profile.language : "en-US"
+        let language = LanguageTag.isValid(resolved) ? resolved : "en-US"
         var args: [String] = [
             "--user-data-dir=\(userDataDir.path)",
             "--use-mock-keychain",
@@ -41,13 +45,26 @@ public struct LaunchPlan: Sendable, Equatable {
         }
         args += profile.extraArgs
         args += ["-AppleLanguages", "(\"\(language)\", \"<\")"]
-        if openStartURLs { args += profile.startURLs }
+        if let checkPageURL { args.append(checkPageURL) }
+        if openStartURLs { args += profile.startURLs.filter { $0 != checkPageURL } }
         return LaunchPlan(arguments: args, environment: ["TZ": timezone])
     }
 }
 
 /// BCP 47 语言标签的简单校验（只允许字母、数字和连字符），防止拼进 plist 字符串时出问题。
 public enum LanguageTag {
+    /// 环境语言设为这个值时，按出口 IP 所在国家自动决定。
+    public static let auto = "auto"
+
+    /// 解析"自动"：按出口国家推荐，找不到就用 fallback。
+    public static func resolve(_ language: String, countryCode: String?, fallback: String = "en-US") -> String {
+        guard language == auto else { return language }
+        return CountryLocale.recommendedLanguage(for: countryCode) ?? fallback
+    }
+
+    /// 合法的语言设置：auto 或 BCP 47 标签。
+    public static func isValidSetting(_ s: String) -> Bool { s == auto || isValid(s) }
+
     public static func isValid(_ s: String) -> Bool {
         s.range(of: "^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$", options: .regularExpression) != nil
     }

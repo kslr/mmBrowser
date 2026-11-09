@@ -83,6 +83,16 @@ public final class Store: Sendable {
                 WHERE proxyHost IS NOT NULL AND deletedAt IS NULL
                 """)
         }
+        m.registerMigration("v2") { db in
+            try db.alter(table: "profile") { t in
+                t.add(column: "proxyExpiresAt", .datetime)
+                t.add(column: "extensionIds", .text).notNull().defaults(to: "[]")
+            }
+            try db.create(table: "appSetting") { t in
+                t.primaryKey("key", .text)
+                t.column("value", .text).notNull()   // JSON
+            }
+        }
         return m
     }
 
@@ -193,6 +203,86 @@ public final class Store: Sendable {
         let dir = paths.profileDir(profileId)
         if FileManager.default.fileExists(atPath: dir.path) {
             try FileManager.default.removeItem(at: dir)
+        }
+    }
+
+    // MARK: - 批量
+
+    /// 批量插入，逐个检查代理唯一性（包括这一批内部互相重复）。返回成功的和失败的（名称 + 原因）。
+    public func insertMany(_ items: [Profile]) throws -> (inserted: [Profile], failed: [(String, String)]) {
+        var inserted: [Profile] = []
+        var failed: [(String, String)] = []
+        for p in items {
+            do {
+                inserted.append(try insert(p))
+            } catch {
+                failed.append((p.name, error.localizedDescription))
+            }
+        }
+        return (inserted, failed)
+    }
+
+    /// 批量修改。transform 改完后逐个保存，代理冲突等错误会收集起来返回。
+    public func updateMany(_ ids: [String], _ transform: (inout Profile) -> Void) throws -> [(String, String)] {
+        var failed: [(String, String)] = []
+        for id in ids {
+            guard var p = try profile(id: id) else { continue }
+            transform(&p)
+            do { try update(p) } catch { failed.append((p.name, error.localizedDescription)) }
+        }
+        return failed
+    }
+
+    /// 复制环境：设置全部复制，代理不复制（一个代理只能对应一个环境）。
+    /// copyData 为 true 时连浏览器数据（登录状态、Cookie、保存的密码、扩展）一起复制。
+    public func duplicate(_ id: String, name: String? = nil, copyData: Bool = false) throws -> Profile {
+        guard let src = try profile(id: id) else { throw StoreError.notFound(id) }
+        var p = src
+        p.id = UUID().uuidString.lowercased()
+        p.name = name ?? "\(src.name) 副本"
+        p.proxy = nil
+        p.proxyExpiresAt = nil
+        p.lastExit = nil
+        p.lastOpenedAt = nil
+        p.deletedAt = nil
+        p.themeColor = nil
+        let saved = try insert(p)
+        if copyData {
+            let from = paths.profileDir(src.id)
+            if FileManager.default.fileExists(atPath: from.path) {
+                try ProfileFiles.copyData(from: from, to: paths.profileDir(saved.id))
+            }
+        }
+        return saved
+    }
+
+    /// 清理回收站里删除超过 days 天的环境，返回清理掉的 id。
+    @discardableResult
+    public func purgeTrash(olderThanDays days: Int, now: Date = Date()) throws -> [String] {
+        let cutoff = now.addingTimeInterval(-Double(days) * 86_400)
+        let ids = try db.read { db in
+            try String.fetchAll(db, sql: "SELECT id FROM profile WHERE deletedAt IS NOT NULL AND deletedAt < ?",
+                                arguments: [cutoff])
+        }
+        for id in ids { try purge(id) }
+        return ids
+    }
+
+    // MARK: - 设置（JSON）
+
+    public func setting<T: Decodable>(_ key: String, as type: T.Type = T.self) throws -> T? {
+        let json = try db.read { db in
+            try String.fetchOne(db, sql: "SELECT value FROM appSetting WHERE key = ?", arguments: [key])
+        }
+        guard let json else { return nil }
+        return try JSONDecoder().decode(T.self, from: Data(json.utf8))
+    }
+
+    public func setSetting<T: Encodable>(_ key: String, _ value: T) throws {
+        let json = String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
+        try db.write { db in
+            try db.execute(sql: "INSERT INTO appSetting(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                           arguments: [key, json])
         }
     }
 

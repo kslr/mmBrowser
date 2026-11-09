@@ -19,15 +19,28 @@ enum SnapshotRunner {
         await render(ContentView().environment(model), size: CGSize(width: 1280, height: 720),
                      to: outputDir.appendingPathComponent("main.png"))
         if let first = model.profiles.first {
-            await render(ProfileEditorView(target: .edit(first.id)).environment(model), size: CGSize(width: 620, height: 720),
+            await render(ProfileEditorView(target: .edit(first.id)).environment(model), size: CGSize(width: 600, height: 660),
                          to: outputDir.appendingPathComponent("editor.png"))
-            ProfileEditorView.height = 1560
+            ProfileEditorView.height = 1500
+            ProfileEditorView.expandAllForSnapshot = true
             await render(ProfileEditorView(target: .edit(first.id)).environment(model),
-                         size: CGSize(width: 620, height: 1560), to: outputDir.appendingPathComponent("editor-full.png"))
-            ProfileEditorView.height = 720
+                         size: CGSize(width: 600, height: 1500), to: outputDir.appendingPathComponent("editor-full.png"))
+            ProfileEditorView.expandAllForSnapshot = false
+            ProfileEditorView.height = 660
+            await render(ProfileEditorView(target: .new(groupId: nil)).environment(model),
+                         size: CGSize(width: 600, height: 660), to: outputDir.appendingPathComponent("editor-new.png"))
         }
-        await render(SettingsView().environment(model), size: CGSize(width: 560, height: 380),
+        await render(SettingsView().environment(model), size: CGSize(width: 600, height: 700),
                      to: outputDir.appendingPathComponent("settings.png"))
+        await render(ContentView(initialSidebar: .proxies).environment(model), size: CGSize(width: 1280, height: 720),
+                     to: outputDir.appendingPathComponent("proxies.png"))
+        await render(BatchCreateView(groupId: nil).environment(model), size: CGSize(width: 600, height: 700),
+                     to: outputDir.appendingPathComponent("batch-create.png"))
+        let ids = model.profiles.prefix(3).map(\.id)
+        await render(BatchEditView(ids: ids).environment(model), size: CGSize(width: 560, height: 620),
+                     to: outputDir.appendingPathComponent("batch-edit.png"))
+        await render(AssignProxiesView(ids: ids).environment(model), size: CGSize(width: 600, height: 640),
+                     to: outputDir.appendingPathComponent("assign.png"))
     }
 
     /// 走界面同一套 AppModel：启动一个直连测试环境 → 等到运行中 → 截图 → 关闭 → 等回到未运行。
@@ -71,6 +84,109 @@ enum SnapshotRunner {
         _ = await waitFor("Chrome 进程已退出", timeout: 10) { model.launcher?.runningPID(of: saved.id) == nil }
     }
 
+    /// 批量功能自检：全部通过 AppModel（界面用的同一套逻辑）。
+    @discardableResult
+    static func batchSelfTest() async -> Bool {
+        let model = AppModel.shared
+        guard let store = model.store else { return false }
+        var failures = 0
+        func check(_ what: String, _ ok: Bool) {
+            print("batch: \(what) \(ok ? "✓" : "✗")")
+            if !ok { failures += 1 }
+        }
+        func waitFor(_ timeout: TimeInterval, _ cond: () -> Bool) async -> Bool {
+            let deadline = Date().addingTimeInterval(timeout)
+            while !cond(), Date() < deadline { try? await Task.sleep(for: .milliseconds(200)) }
+            return cond()
+        }
+
+        // 两个本地上游（直连出口），当作两个不同的代理
+        let up1 = LocalProxyServer(upstream: .direct), up2 = LocalProxyServer(upstream: .direct)
+        guard let p1 = try? await up1.start(), let p2 = try? await up2.start() else { print("batch: 上游启动失败"); return false }
+        defer { up1.stop(); up2.stop() }
+        let proxies = [ProxyConfig(kind: .socks5, host: "127.0.0.1", port: Int(p1)),
+                       ProxyConfig(kind: .socks5, host: "127.0.0.1", port: Int(p2))]
+
+        // 1. 批量新建
+        var template = Profile(name: "t", language: "en-US")
+        template.extraArgs = ["--window-position=-3000,-3000"]
+        let gid = model.createGroup("自检组")
+        template.groupId = gid
+        let before = model.profiles.count
+        model.batchCreate(template: template, namePattern: "自检-{n}", startNumber: 1, digits: 2, count: 0, proxies: proxies)
+        _ = await waitFor(5) { model.profiles.count == before + 2 }  // 等数据库观察推送到位
+        let created = model.profiles.filter { $0.name.hasPrefix("自检-0") }.sorted { $0.seq < $1.seq }
+        check("批量新建 2 个，名称 自检-01/02，分组正确", created.count == 2 && model.profiles.count == before + 2
+              && created.map(\.name) == ["自检-01", "自检-02"] && created.allSatisfy { $0.groupId == gid })
+        if created.count != 2 || created.contains(where: { $0.groupId != gid }) {
+            print("batch:   before=\(before) now=\(model.profiles.count) gid=\(String(describing: gid)) created=\(created.map { "\($0.name)/\(String(describing: $0.groupId))" }) alert=\(model.alert?.title ?? "-") \(model.alert?.message ?? "")")
+        }
+        model.alert = nil
+        guard created.count == 2 else { return false }
+        let ids = created.map(\.id)
+
+        // 2. 批量检测 + 重复出口提示
+        model.checkMany(ids)
+        let checked = await waitFor(60) { ids.allSatisfy { model.fresh($0)?.lastExit != nil } && model.checking.isEmpty }
+        _ = await waitFor(5) { ids.allSatisfy { model.profile($0)?.lastExit != nil } }  // 列表也推送到位
+        check("批量检测完成，都有出口信息", checked)
+        if !checked {
+            for id in ids {
+                print("batch:   \(model.fresh(id)?.name ?? id) lastExit=\(model.fresh(id)?.lastExit?.ip ?? "nil") error=\(model.lastError[id] ?? "nil") checking=\(model.checking.contains(id))")
+            }
+        }
+        if let a = model.profile(ids[0]) { check("两个环境出口相同 → 出口重复提示", !model.sharedExitIP(a).isEmpty) }
+
+        // 3. 互换代理
+        model.assignProxies(ids, proxies: [proxies[1], proxies[0]], expiry: Date().addingTimeInterval(86_400 * 3))
+        model.alert = nil
+        check("互换代理成功", model.fresh(ids[0])?.proxy == proxies[1] && model.fresh(ids[1])?.proxy == proxies[0])
+        _ = await waitFor(5) { model.expiringProxies().contains { ids.contains($0.id) } }
+        check("设置到期日后出现在到期提醒里", model.expiringProxies().contains { ids.contains($0.id) })
+
+        // 4. 批量编辑
+        var e = BatchEdit()
+        e.addTags = ["自检标签"]
+        e.setLanguage = true; e.language = "ja-JP"
+        e.addExtensions = []
+        model.batchEdit(ids, e)
+        check("批量编辑：标签和语言", ids.allSatisfy { model.fresh($0)?.tags.contains("自检标签") == true && model.fresh($0)?.language == "ja-JP" })
+
+        // 5. 复制
+        model.duplicate(ids[0], copyData: false)
+        let copy = try? store.profiles().first { $0.name == "自检-01 副本" }
+        check("复制环境：不带代理、保留标签", copy?.proxy == nil && copy?.tags.contains("自检标签") == true)
+
+        // 6. CSV 往返
+        let csv = ProfileCSV.export(ids.compactMap(model.profile)) { model.groupName($0) }
+        let rows = (try? ProfileCSV.parseImport(csv)) ?? []
+        check("CSV 导出再解析，代理和分组名一致", rows.count == 2 && rows[0].profile.proxy == proxies[1] && rows[0].groupName == "自检组")
+
+        // 7. 运行上限 = 1：批量启动两个，只启动一个并提示
+        let oldMax = UserDefaults.standard.object(forKey: AppModel.maxRunningKey)
+        UserDefaults.standard.set(1, forKey: AppModel.maxRunningKey)
+        model.launch(ids)
+        check("超过上限时提示", model.alert?.title.contains("上限") == true)
+        model.alert = nil
+        let oneRunning = await waitFor(60) { ids.contains { if case .running = model.state(of: $0) { true } else { false } } }
+        check("只启动了 1 个", oneRunning && model.states.values.filter(\.isActive).count == 1)
+        if let oldMax { UserDefaults.standard.set(oldMax, forKey: AppModel.maxRunningKey) }
+        else { UserDefaults.standard.removeObject(forKey: AppModel.maxRunningKey) }
+
+        // 8. 全部关闭
+        await model.stopAll()
+        let allStopped = await waitFor(20) { ids.allSatisfy { model.launcher?.runningPID(of: $0) == nil } }
+        check("全部关闭后没有残留 Chrome", allStopped)
+
+        // 清理
+        model.moveToTrash(ids + [copy?.id].compactMap { $0 })
+        model.purge(ids + [copy?.id].compactMap { $0 })
+        if let gid { model.deleteGroup(gid) }
+        _ = store
+        print("batch: 完成，失败 \(failures) 项")
+        return failures == 0
+    }
+
     private static func seedDemoData(_ model: AppModel) {
         guard let store = model.store, (try? store.profiles(includeDeleted: true).isEmpty) == true else { return }
         let a = try? store.group(named: "客户A")
@@ -95,6 +211,17 @@ enum SnapshotRunner {
             }
         }
         if let last = try? store.insert(Profile(name: "已停用的环境")) { try? store.softDelete(last.id) }
+        // 到期日：一个已过期、一个快到期、一个还早
+        let all = (try? store.profiles()) ?? []
+        let offsets: [Double] = [-2, 3, 60]
+        for (p, d) in zip(all, offsets) {
+            _ = try? store.updateMany([p.id]) { $0.proxyExpiresAt = Date().addingTimeInterval(d * 86_400) }
+        }
+        try? store.setSetting("extensionLibrary", [
+            ExtensionEntry(id: "ddkjiahejlhfcafbddmgiahcphecmpfh", name: "uBlock Origin Lite"),
+            ExtensionEntry(id: "eimadpbcbfnmbkopoojfekhnkhdbieeh", name: ""),
+        ])
+        if let first = all.first { _ = try? store.updateMany([first.id]) { $0.extensionIds = ["ddkjiahejlhfcafbddmgiahcphecmpfh"] } }
         model.refreshFromDisk()
     }
 

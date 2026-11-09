@@ -48,11 +48,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
             let selfTest = CommandLine.arguments.contains("--selftest")
+            let batchTest = CommandLine.arguments.contains("--selftest-batch")
             Task { @MainActor in
                 let dir = URL(fileURLWithPath: CommandLine.arguments[i + 1])
                 await SnapshotRunner.run(outputDir: dir)
                 if selfTest { await SnapshotRunner.selfTest(outputDir: dir) }
-                NSApp.terminate(nil)
+                var ok = true
+                if batchTest { ok = await SnapshotRunner.batchSelfTest() }
+                // 自检模式直接退出，不走"还有环境在运行"的确认框
+                await AppModel.shared.stopAll()
+                exit(ok ? 0 : 1)
             }
             return
         }

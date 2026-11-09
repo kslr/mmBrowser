@@ -67,3 +67,15 @@ struct GroupTests {
         #expect(try s.profile(id: a.id)?.groupId == nil)
     }
 }
+
+@Suite("检测页设置")
+struct CheckPageTests {
+    @Test func defaultAndSet() throws {
+        let s = try Store(inMemory: AppPaths(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
+        #expect(s.checkPage == .preset(.browserscan) && s.checkPage.url == "https://www.browserscan.net/")
+        try s.setCheckPage(.custom("https://my.check/"))
+        #expect(s.checkPage.url == "https://my.check/")
+        try s.setCheckPage(.none)
+        #expect(s.checkPage.url == nil)
+    }
+}

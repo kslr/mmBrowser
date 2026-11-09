@@ -28,10 +28,13 @@ struct ProfileListView: View {
     @Environment(AppModel.self) private var model
     let scope: SidebarItem
     @Binding var editing: EditorTarget?
+    @Binding var batch: BatchSheet?
+    var showProxies: () -> Void = {}
     @State private var selection = Set<String>()
     @State private var search = ""
     @State private var sortOrder = [KeyPathComparator(\ProfileRow.seq)]
     @State private var confirmPurge: [String]?
+    @State private var pendingCSV: [ProfileCSV.Row]?
 
     private var isTrash: Bool { scope == .trash }
 
@@ -103,7 +106,8 @@ struct ProfileListView: View {
             .width(min: 80, ideal: 115)
 
             TableColumn("语言 / 时区") { r in
-                Text("\(r.profile.language) · \(r.profile.timezone ?? "自动")").lineLimit(1).foregroundStyle(.secondary)
+                Text("\(r.profile.language == LanguageTag.auto ? "自动" : r.profile.language) · \(r.profile.timezone ?? "自动")")
+                    .lineLimit(1).foregroundStyle(.secondary)
             }
             .width(min: 80, ideal: 110)
 
@@ -146,7 +150,37 @@ struct ProfileListView: View {
                                        description: Text(isTrash || !search.isEmpty ? "" : "点工具栏的 + 新建环境"))
             }
         }
+        .confirmationDialog("导入 \(pendingCSV?.count ?? 0) 个环境？", isPresented: Binding(
+            get: { pendingCSV != nil }, set: { if !$0 { pendingCSV = nil } })) {
+            Button("导入") { if let rows = pendingCSV { model.importCSV(rows) } }
+        } message: {
+            Text(csvSummary)
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            let expiring = model.expiringProxies()
+            if !isTrash, !expiring.isEmpty {
+                HStack {
+                    Image(systemName: "calendar.badge.exclamationmark").foregroundStyle(.orange)
+                    Text("\(expiring.count) 个代理已到期或 7 天内到期：" +
+                         expiring.prefix(3).map { "#\($0.seq) \($0.name)" }.joined(separator: "、") + (expiring.count > 3 ? "……" : ""))
+                        .lineLimit(1)
+                    Spacer()
+                    Button("查看", action: showProxies).controlSize(.small)
+                }
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(.orange.opacity(0.12))
+            }
+        }
         .onChange(of: scope) { selection.removeAll() }
+    }
+
+    private var csvSummary: String {
+        guard let rows = pendingCSV else { return "" }
+        let groups = Set(rows.compactMap(\.groupName)).subtracting(model.groups.map(\.name))
+        var s = "代理：\(rows.filter { $0.profile.proxy != nil }.count) 个环境有代理。"
+        if !groups.isEmpty { s += "\n将新建分组：\(groups.sorted().joined(separator: "、"))。" }
+        s += "\n代理已被其它环境占用的行会导入失败，结束后会列出。"
+        return s
     }
 
     private var title: String {
@@ -156,6 +190,7 @@ struct ProfileListView: View {
         case .ungrouped: "未分组"
         case .group(let id): model.groupName(id) ?? "分组"
         case .tag(let t): "标签：\(t)"
+        case .proxies: "代理"
         case .trash: "回收站"
         }
     }
@@ -175,6 +210,11 @@ struct ProfileListView: View {
     }
 
     private var selected: [String] { Array(selection) }
+
+    private var currentGroupId: Int64? {
+        if case .group(let id) = scope { return id }
+        return nil
+    }
 
     @ToolbarContentBuilder
     private var toolbar: some ToolbarContent {
@@ -200,12 +240,26 @@ struct ProfileListView: View {
                     if let id = selected.first { editing = .edit(id) }
                 } label: { Label("编辑", systemImage: "pencil") }
                     .disabled(selection.count != 1)
-                Button {
-                    var gid: Int64?
-                    if case .group(let id) = scope { gid = id }
-                    editing = .new(groupId: gid)
-                } label: { Label("新建环境", systemImage: "plus") }
-                    .help("新建环境（⌘N）")
+                Menu {
+                    Button("排列成网格") { model.arrangeWindows(.grid) }
+                    Button("层叠") { model.arrangeWindows(.cascade) }
+                } label: { Label("排列窗口", systemImage: "rectangle.grid.2x2") }
+                .help("排列所有运行中环境的窗口（需要辅助功能权限）")
+                .disabled(model.profiles(in: .running).isEmpty)
+                Menu {
+                    Button("新建环境…") { editing = .new(groupId: currentGroupId) }
+                    Button("批量新建…") { batch = .create(groupId: currentGroupId) }
+                    Divider()
+                    Button("从 CSV 导入…") { pendingCSV = model.pickCSVForImport() }
+                    Button("导入环境备份…") { model.importBackups() }
+                    Divider()
+                    Button("把当前列表导出为 CSV…") { model.exportCSV(rows.map(\.id)) }
+                } label: {
+                    Label("新建环境", systemImage: "plus")
+                } primaryAction: {
+                    editing = .new(groupId: currentGroupId)
+                }
+                .help("新建环境（⌘N）；点箭头可批量新建、导入")
             }
         }
     }
@@ -226,13 +280,27 @@ struct ProfileListView: View {
             }
             Divider()
             if ids.count == 1 { Button("编辑…") { editing = .edit(ids[0]) } }
-            Button("检测代理") { ids.forEach(model.check) }
+            Button("批量编辑…") { batch = .edit(ids) }
+            Button("检测代理") { model.checkMany(ids) }
+            Button("分配代理…") { batch = .assignProxies(ids) }
+            Button("设置代理到期日…") { batch = .expiry(ids) }
             Menu("移到分组") {
                 Button("未分组") { model.move(ids, toGroup: nil) }
                 Divider()
                 ForEach(model.groups) { g in Button(g.name) { model.move(ids, toGroup: g.id) } }
             }
             if ids.count == 1 {
+                Menu("复制环境") {
+                    Button("只复制设置") { model.duplicate(ids[0], copyData: false) }
+                    Button("连同浏览器数据（登录状态、Cookie、密码、扩展）") { model.duplicate(ids[0], copyData: true) }
+                }
+                .disabled(anyActive)
+                Menu("Cookie") {
+                    Button("导出…") { model.exportCookies(ids[0]) }
+                    Button("导入（与现有合并）…") { model.importCookies(ids[0], replaceAll: false) }
+                    Button("导入（先清空现有）…") { model.importCookies(ids[0], replaceAll: true) }
+                }
+                .disabled(anyActive)
                 Button("在 Finder 中显示环境目录") { model.revealInFinder(ids[0]) }
                 Button("复制代理地址") {
                     if let p = model.profile(ids[0])?.proxy {
@@ -241,6 +309,10 @@ struct ProfileListView: View {
                     }
                 }
             }
+            Divider()
+            Button("导出为 CSV…") { model.exportCSV(ids) }
+            Button("导出环境备份…") { model.exportBackups(ids) }
+                .disabled(anyActive)
             Divider()
             Button("移到回收站", role: .destructive) { model.moveToTrash(ids); selection.subtract(ids) }
                 .disabled(anyActive)

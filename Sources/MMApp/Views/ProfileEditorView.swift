@@ -9,8 +9,6 @@ struct ProfileDraft {
     var groupId: Int64?
     var tagsText = ""
     var notes = ""
-    var startURLsText = ""
-    var alwaysOpenStartURLs = false
 
     var proxyMode = ProxyMode.proxy
     var proxyKind = ProxyConfig.Kind.socks5
@@ -18,7 +16,10 @@ struct ProfileDraft {
     var portText = ""
     var username = ""
     var password = ""
+    var expiryEnabled = false
+    var expiry = Date().addingTimeInterval(30 * 86_400)
 
+    var languageAuto = true
     var language = "en-US"
     var timezoneAuto = true
     var timezone = TimeZone.current.identifier
@@ -29,11 +30,13 @@ struct ProfileDraft {
     var themeAuto = true
     var themeColor = Color(hex: "#1A73E8")
     var extraArgsText = ""
+    var extensionIds: [String] = []
 
     static let windowPresets = ["默认", "1280x800", "1366x768", "1440x900", "1536x864", "1680x1050", "1920x1080", "自定义"]
 
     init(defaultLanguage: String, groupId: Int64?) {
-        language = defaultLanguage
+        languageAuto = defaultLanguage == LanguageTag.auto
+        language = languageAuto ? "en-US" : defaultLanguage
         self.groupId = groupId
     }
 
@@ -42,19 +45,15 @@ struct ProfileDraft {
         groupId = p.groupId
         tagsText = p.tags.joined(separator: ", ")
         notes = p.notes
-        startURLsText = p.startURLs.joined(separator: "\n")
-        alwaysOpenStartURLs = p.alwaysOpenStartURLs
         if let proxy = p.proxy {
             proxyMode = .proxy
-            proxyKind = proxy.kind
-            host = proxy.host
-            portText = String(proxy.port)
-            username = proxy.username ?? ""
-            password = proxy.password ?? ""
+            fill(from: proxy)
         } else {
             proxyMode = p.allowDirect ? .direct : .proxy
         }
-        language = p.language
+        if let e = p.proxyExpiresAt { expiryEnabled = true; expiry = e }
+        languageAuto = p.language == LanguageTag.auto
+        language = languageAuto ? (CountryLocale.recommendedLanguage(for: p.lastExit?.countryCode) ?? "en-US") : p.language
         timezoneAuto = p.timezone == nil
         timezone = p.timezone ?? p.lastExit?.timezone ?? TimeZone.current.identifier
         geolocation = p.geolocation
@@ -67,6 +66,7 @@ struct ProfileDraft {
         themeAuto = p.themeColor == nil
         themeColor = Color(hex: p.effectiveThemeColor)
         extraArgsText = p.extraArgs.joined(separator: "\n")
+        extensionIds = p.extensionIds
     }
 
     /// 当前填写的代理（不完整时返回 nil）。
@@ -86,39 +86,35 @@ struct ProfileDraft {
         password = proxy.password ?? ""
     }
 
-    /// 校验并写入 profile。
+    /// 校验并写入 profile。名称可以为空（保存时自动命名）。启动页不在表单里编辑，保持原值。
     func apply(to p: inout Profile) throws {
-        let trimmedName = name.trimmingCharacters(in: .whitespaces)
-        guard !trimmedName.isEmpty else { throw DraftError("请填写名称") }
-        p.name = trimmedName
+        p.name = name.trimmingCharacters(in: .whitespaces)
         p.groupId = groupId
         p.tags = tagsText.split(whereSeparator: { $0 == "," || $0 == "，" })
             .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
         p.notes = notes
-        p.startURLs = try startURLsText.split(whereSeparator: \.isNewline)
-            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-            .map { s in
-                let url = s.contains("://") ? s : "https://\(s)"
-                guard URL(string: url)?.host != nil else { throw DraftError("启动页网址无效：\(s)") }
-                return url
-            }
-        p.alwaysOpenStartURLs = alwaysOpenStartURLs
 
         switch proxyMode {
         case .proxy:
-            guard !host.trimmingCharacters(in: .whitespaces).isEmpty else { throw DraftError("请填写代理主机") }
+            guard !host.trimmingCharacters(in: .whitespaces).isEmpty else { throw DraftError("请填写代理（或者选择直连）") }
             guard let port = Int(portText), (1...65535).contains(port) else { throw DraftError("代理端口无效") }
             guard username.isEmpty == false || password.isEmpty else { throw DraftError("填了密码但没有用户名") }
             p.proxy = ProxyConfig(kind: proxyKind, host: host.trimmingCharacters(in: .whitespaces), port: port,
                                   username: username, password: password)
             p.allowDirect = false
+            p.proxyExpiresAt = expiryEnabled ? expiry : nil
         case .direct:
             p.proxy = nil
             p.allowDirect = true
+            p.proxyExpiresAt = nil
         }
 
-        guard LanguageTag.isValid(language) else { throw DraftError("语言代码无效：\(language)（例如 en-US、ja-JP）") }
-        p.language = language
+        if languageAuto {
+            p.language = LanguageTag.auto
+        } else {
+            guard LanguageTag.isValid(language) else { throw DraftError("语言代码无效：\(language)（例如 en-US、ja-JP）") }
+            p.language = language
+        }
         if timezoneAuto {
             p.timezone = nil
         } else {
@@ -142,6 +138,7 @@ struct ProfileDraft {
         p.themeColor = themeAuto ? nil : themeColor.hexString
         p.extraArgs = extraArgsText.split(whereSeparator: \.isNewline)
             .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+        p.extensionIds = extensionIds
     }
 }
 
@@ -153,14 +150,14 @@ struct DraftError: LocalizedError {
 
 /// 常用语言（显示名用系统当前语言）。
 enum LanguageOptions {
-    static let codes: [String] = {
-        let fromCountries = Set(["en-US", "en-GB", "zh-CN", "zh-TW", "zh-HK", "ja-JP", "ko-KR", "de-DE", "fr-FR", "es-ES",
-                                 "es-MX", "pt-BR", "pt-PT", "it-IT", "ru-RU", "nl-NL", "pl-PL", "tr-TR", "ar-SA", "th-TH",
-                                 "vi-VN", "id-ID", "ms-MY", "en-CA", "en-AU", "en-SG", "en-IN", "sv-SE", "uk-UA", "he-IL"])
-        return fromCountries.sorted()
-    }()
+    static let codes: [String] = [
+        "en-US", "en-GB", "en-CA", "en-AU", "en-SG", "en-IN", "zh-CN", "zh-TW", "zh-HK", "ja-JP", "ko-KR",
+        "de-DE", "fr-FR", "es-ES", "es-MX", "pt-BR", "pt-PT", "it-IT", "nl-NL", "sv-SE", "pl-PL", "ru-RU",
+        "uk-UA", "tr-TR", "ar-SA", "he-IL", "th-TH", "vi-VN", "id-ID", "ms-MY",
+    ]
 
     static func label(_ code: String) -> String {
+        if code == LanguageTag.auto { return "跟随出口 IP" }
         let name = Locale.current.localizedString(forIdentifier: code) ?? code
         return "\(name)（\(code)）"
     }
@@ -168,15 +165,19 @@ enum LanguageOptions {
 
 struct ProfileEditorView: View {
     /// 表单高度（截图自检时会临时调高，以便看到全部内容）。
-    @MainActor static var height: CGFloat = 720
+    @MainActor static var height: CGFloat = 660
+    @MainActor static var expandAllForSnapshot = false
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let target: EditorTarget
 
-    @State private var draft = ProfileDraft(defaultLanguage: "en-US", groupId: nil)
+    @State private var draft = ProfileDraft(defaultLanguage: LanguageTag.auto, groupId: nil)
     @State private var original: Profile?
     @State private var loaded = false
-    @State private var quickProxy = ""
+    @State private var proxyText = ""
+    @State private var proxyParseError: String?
+    @State private var showProxyFields = false
+    @State private var showMore = false
     @State private var showPassword = false
     @State private var checkResult: Result<ExitInfo, Error>?
     @State private var checking = false
@@ -190,7 +191,7 @@ struct ProfileEditorView: View {
                 basicSection
                 proxySection
                 environmentSection
-                advancedSection
+                moreSection
             }
             .formStyle(.grouped)
 
@@ -207,34 +208,25 @@ struct ProfileEditorView: View {
             }
             .padding(12)
         }
-        .frame(width: 620, height: Self.height)
+        .frame(width: 600, height: Self.height)
         .onAppear(perform: load)
     }
 
-    // MARK: - 分区
+    // MARK: - 基本
 
     private var basicSection: some View {
         Section("基本") {
-            TextField("名称", text: $draft.name, prompt: Text("例如：客户A-01"))
+            TextField("名称", text: $draft.name, prompt: Text(isNew ? "留空自动命名，如 环境-12" : ""))
             Picker("分组", selection: $draft.groupId) {
                 Text("未分组").tag(Int64?.none)
                 ForEach(model.groups) { g in Text(g.name).tag(Int64?.some(g.id!)) }
             }
-            TextField("标签", text: $draft.tagsText, prompt: Text("用逗号分隔"))
-            TextField("备注", text: $draft.notes, axis: .vertical).lineLimit(1...4)
-            VStack(alignment: .leading, spacing: 4) {
-                Text("启动页（每行一个）")
-                TextEditor(text: $draft.startURLsText)
-                    .font(.body.monospaced())
-                    .frame(height: 54)
-                    .scrollContentBackground(.hidden)
-                    .padding(4)
-                    .background(.background.secondary, in: RoundedRectangle(cornerRadius: 5))
-            }
-            Toggle("每次启动都打开启动页", isOn: $draft.alwaysOpenStartURLs)
-                .help("关闭时，启动页只在第一次打开环境时打开，之后恢复上次的标签页")
+            TextField("标签", text: $draft.tagsText, prompt: Text("可选，用逗号分隔"))
+            TextField("备注", text: $draft.notes, prompt: Text("可选"), axis: .vertical).lineLimit(1...3)
         }
     }
+
+    // MARK: - 代理
 
     private var proxySection: some View {
         Section {
@@ -245,27 +237,33 @@ struct ProfileEditorView: View {
             .pickerStyle(.segmented)
 
             if draft.proxyMode == .proxy {
-                HStack {
-                    TextField("快速填写", text: $quickProxy, prompt: Text("粘贴 socks5://user:pass@host:port 或 host:port:user:pass"))
-                        .onSubmit(parseQuick)
-                    Button("解析", action: parseQuick).disabled(quickProxy.isEmpty)
-                }
-                Picker("类型", selection: $draft.proxyKind) {
-                    Text("SOCKS5").tag(ProxyConfig.Kind.socks5)
-                    Text("HTTP").tag(ProxyConfig.Kind.http)
-                }
-                .pickerStyle(.segmented)
-                TextField("主机", text: $draft.host)
-                TextField("端口", text: $draft.portText)
-                TextField("用户名", text: $draft.username, prompt: Text("可选"))
-                HStack {
-                    if showPassword {
-                        TextField("密码", text: $draft.password, prompt: Text("可选"))
-                    } else {
-                        SecureField("密码", text: $draft.password, prompt: Text("可选"))
+                TextField("代理", text: $proxyText,
+                          prompt: Text(draft.proxyConfig == nil ? "粘贴 socks5://user:pass@host:port 等" : "粘贴新的代理即可替换"))
+                    .onChange(of: proxyText) { parseProxyText() }
+                proxySummary
+                ExpandRow(title: "逐项填写", subtitle: nil, expanded: $showProxyFields)
+                if showProxyFields {
+                    Picker("类型", selection: $draft.proxyKind) {
+                        Text("SOCKS5").tag(ProxyConfig.Kind.socks5)
+                        Text("HTTP").tag(ProxyConfig.Kind.http)
                     }
-                    Button { showPassword.toggle() } label: { Image(systemName: showPassword ? "eye.slash" : "eye") }
-                        .buttonStyle(.borderless)
+                    .pickerStyle(.segmented)
+                    TextField("主机", text: $draft.host)
+                    TextField("端口", text: $draft.portText)
+                    TextField("用户名", text: $draft.username, prompt: Text("可选"))
+                    HStack {
+                        if showPassword {
+                            TextField("密码", text: $draft.password, prompt: Text("可选"))
+                        } else {
+                            SecureField("密码", text: $draft.password, prompt: Text("可选"))
+                        }
+                        Button { showPassword.toggle() } label: { Image(systemName: showPassword ? "eye.slash" : "eye") }
+                            .buttonStyle(.borderless)
+                    }
+                }
+                Toggle("记录到期日（到期前提醒）", isOn: $draft.expiryEnabled)
+                if draft.expiryEnabled {
+                    DatePicker("到期日", selection: $draft.expiry, displayedComponents: .date)
                 }
             } else {
                 Label("直连时浏览器使用本机网络，出口就是你自己的 IP。", systemImage: "exclamationmark.triangle.fill")
@@ -282,8 +280,32 @@ struct ProfileEditorView: View {
         } header: {
             Text("代理")
         } footer: {
-            Text("一个代理只能绑定一个环境。浏览器通过本地入口连接这个代理，代理断开时浏览器直接断网，不会回落到直连。")
+            Text("一个代理只能绑定一个环境。代理断开时浏览器直接断网，不会回落到直连。")
                 .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+
+    /// 解析结果：类型 · 主机:端口 · 账号
+    @ViewBuilder
+    private var proxySummary: some View {
+        if let proxyParseError {
+            Label(proxyParseError, systemImage: "xmark.circle.fill").foregroundStyle(.red).font(.callout)
+        } else if let cfg = draft.proxyConfig {
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                Text(cfg.kind == .socks5 ? "SOCKS5" : "HTTP").font(.caption.weight(.medium))
+                    .padding(.horizontal, 5).padding(.vertical, 1)
+                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 3))
+                Text(verbatim: "\(cfg.host):\(cfg.port)").textSelection(.enabled)
+                if let u = cfg.username {
+                    Text("账号 \(u)").foregroundStyle(.secondary)
+                    Text(cfg.password == nil ? "无密码" : "有密码").foregroundStyle(.secondary)
+                } else {
+                    Text("无认证").foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .font(.callout)
         }
     }
 
@@ -291,17 +313,9 @@ struct ProfileEditorView: View {
     private var checkResultView: some View {
         switch checkResult {
         case .success(let info):
-            VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: .trailing, spacing: 2) {
                 Text(info.summary).font(.callout).textSelection(.enabled)
                 if let org = info.org { Text(org).font(.caption).foregroundStyle(.secondary) }
-                if let rec = CountryLocale.recommendedLanguage(for: info.countryCode),
-                   rec != draft.language || !draft.timezoneAuto {
-                    Button("按出口设置：语言 \(rec)，时区跟随出口") {
-                        draft.language = rec
-                        draft.timezoneAuto = true
-                    }
-                    .controlSize(.small)
-                }
             }
         case .failure(let e):
             Text(e.localizedDescription).font(.callout).foregroundStyle(.red).multilineTextAlignment(.trailing)
@@ -310,73 +324,130 @@ struct ProfileEditorView: View {
         }
     }
 
+    // MARK: - 语言和时区
+
+    private var lastExit: ExitInfo? {
+        if case .success(let info) = checkResult { return info }
+        return nil
+    }
+
     private var environmentSection: some View {
         Section {
-            HStack {
-                TextField("语言", text: $draft.language)
-                Menu {
-                    ForEach(LanguageOptions.codes, id: \.self) { code in
-                        Button(LanguageOptions.label(code)) { draft.language = code }
-                    }
-                } label: { Image(systemName: "list.bullet") }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-            }
-            Toggle("时区跟随出口 IP", isOn: $draft.timezoneAuto)
-            if !draft.timezoneAuto {
-                Picker("时区", selection: $draft.timezone) {
-                    ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
+            Picker("语言", selection: Binding(
+                get: { draft.languageAuto ? LanguageTag.auto : draft.language },
+                set: { v in
+                    if v == LanguageTag.auto { draft.languageAuto = true } else { draft.languageAuto = false; draft.language = v }
+                })) {
+                Text("跟随出口 IP（推荐）").tag(LanguageTag.auto)
+                Divider()
+                if !draft.languageAuto, !LanguageOptions.codes.contains(draft.language) {
+                    Text(draft.language).tag(draft.language)
                 }
+                ForEach(LanguageOptions.codes, id: \.self) { Text(LanguageOptions.label($0)).tag($0) }
             }
-            Picker("定位权限", selection: $draft.geolocation) {
-                Text("禁止").tag(GeolocationPolicy.block)
-                Text("询问").tag(GeolocationPolicy.ask)
+            Picker("时区", selection: Binding(
+                get: { draft.timezoneAuto ? "auto" : draft.timezone },
+                set: { v in
+                    if v == "auto" { draft.timezoneAuto = true } else { draft.timezoneAuto = false; draft.timezone = v }
+                })) {
+                Text("跟随出口 IP（推荐）").tag("auto")
+                Divider()
+                ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
             }
-            .pickerStyle(.segmented)
-            Picker("窗口尺寸", selection: $draft.windowPreset) {
-                ForEach(ProfileDraft.windowPresets, id: \.self) { Text($0).tag($0) }
-            }
-            if draft.windowPreset == "自定义" {
-                HStack {
-                    TextField("宽", text: $draft.windowWidthText)
-                    Text("×")
-                    TextField("高", text: $draft.windowHeightText)
+            if let e = lastExit, draft.languageAuto || draft.timezoneAuto {
+                let lang = draft.languageAuto ? LanguageTag.resolve(LanguageTag.auto, countryCode: e.countryCode) : draft.language
+                let tz = draft.timezoneAuto ? (e.timezone ?? "?") : draft.timezone
+                LabeledContent("按当前出口") {
+                    Text("\(LanguageOptions.label(lang)) · \(tz)").foregroundStyle(.secondary)
                 }
-            }
-            Toggle("工具栏自动配色", isOn: $draft.themeAuto)
-                .help("按环境编号自动挑一个颜色，方便区分窗口")
-            if !draft.themeAuto {
-                ColorPicker("工具栏颜色", selection: $draft.themeColor, supportsOpacity: false)
             }
         } header: {
-            Text("环境参数")
+            Text("语言和时区")
         } footer: {
-            Text("语言同时影响网页看到的语言和 Chrome 自身界面的语言。定位权限设为禁止可以避免网站拿到本机真实位置。修改在下次启动环境时生效。")
+            Text("每次启动都会按当时检测到的出口 IP 设置。语言也会影响 Chrome 自身界面的语言。")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
 
-    private var advancedSection: some View {
-        Section("高级") {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("额外的 Chrome 启动参数（每行一个）")
-                TextEditor(text: $draft.extraArgsText)
-                    .font(.body.monospaced())
-                    .frame(height: 44)
-                    .scrollContentBackground(.hidden)
-                    .padding(4)
-                    .background(.background.secondary, in: RoundedRectangle(cornerRadius: 5))
-            }
-            if let p = original {
-                LabeledContent("环境目录") {
+    // MARK: - 更多设置
+
+    private var moreSection: some View {
+        Section {
+            ExpandRow(title: "更多设置", subtitle: moreSummary, expanded: $showMore)
+            if showMore {
+                Picker("定位权限", selection: $draft.geolocation) {
+                    Text("禁止（推荐）").tag(GeolocationPolicy.block)
+                    Text("询问").tag(GeolocationPolicy.ask)
+                }
+                .pickerStyle(.segmented)
+                Picker("窗口尺寸", selection: $draft.windowPreset) {
+                    ForEach(ProfileDraft.windowPresets, id: \.self) { Text($0).tag($0) }
+                }
+                if draft.windowPreset == "自定义" {
                     HStack {
-                        Text(model.paths.profileDir(p.id).path).font(.caption).foregroundStyle(.secondary)
-                            .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
-                        Button("显示") { model.revealInFinder(p.id) }.controlSize(.small)
+                        TextField("宽", text: $draft.windowWidthText)
+                        Text("×")
+                        TextField("高", text: $draft.windowHeightText)
                     }
                 }
-                LabeledContent("编号", value: "#\(p.seq) · \(p.id)")
-                    .font(.caption)
+                Toggle("工具栏自动配色", isOn: $draft.themeAuto)
+                if !draft.themeAuto {
+                    ColorPicker("工具栏颜色", selection: $draft.themeColor, supportsOpacity: false)
+                }
+                extensionRows
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("额外的 Chrome 启动参数（每行一个）")
+                    TextEditor(text: $draft.extraArgsText)
+                        .font(.body.monospaced())
+                        .frame(height: 40)
+                        .scrollContentBackground(.hidden)
+                        .padding(4)
+                        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 5))
+                }
+                if let p = original {
+                    LabeledContent("环境目录") {
+                        HStack {
+                            Text(model.paths.profileDir(p.id).path).font(.caption).foregroundStyle(.secondary)
+                                .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+                            Button("显示") { model.revealInFinder(p.id) }.controlSize(.small)
+                        }
+                    }
+                    LabeledContent("编号", value: "#\(p.seq) · \(p.id)").font(.caption)
+                }
+            }
+        }
+    }
+
+    /// 折叠时显示的摘要，一眼看出有没有改过默认值。
+    private var moreSummary: String {
+        var parts = [draft.geolocation == .block ? "定位禁止" : "定位询问",
+                     draft.windowPreset == "默认" ? "窗口默认" : "窗口 \(draft.windowPreset)"]
+        if !draft.extensionIds.isEmpty { parts.append("\(draft.extensionIds.count) 个扩展") }
+        if !draft.extraArgsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { parts.append("有额外参数") }
+        return parts.joined(separator: " · ")
+    }
+
+    @ViewBuilder
+    private var extensionRows: some View {
+        let lib = model.extensionLibrary
+        if lib.isEmpty && draft.extensionIds.isEmpty {
+            LabeledContent("预装扩展") {
+                Text("扩展库是空的（设置 → 扩展库）").foregroundStyle(.secondary)
+            }
+        }
+        ForEach(lib) { e in
+            Toggle(isOn: Binding(
+                get: { draft.extensionIds.contains(e.id) },
+                set: { on in
+                    draft.extensionIds.removeAll { $0 == e.id }
+                    if on { draft.extensionIds.append(e.id) }
+                })) {
+                Text("扩展：" + (e.name.isEmpty ? String(e.id.prefix(12)) + "…" : e.name)).help(e.id)
+            }
+        }
+        ForEach(draft.extensionIds.filter { id in !lib.contains { $0.id == id } }, id: \.self) { id in
+            Toggle(isOn: Binding(get: { true }, set: { if !$0 { draft.extensionIds.removeAll { $0 == id } } })) {
+                Text("扩展：" + String(id.prefix(12)) + "…").help(id)
             }
         }
     }
@@ -386,11 +457,12 @@ struct ProfileEditorView: View {
     private func load() {
         guard !loaded else { return }
         loaded = true
+        if Self.expandAllForSnapshot { showMore = true }
         switch target {
         case .new(let gid):
             draft = ProfileDraft(defaultLanguage: model.defaultLanguage, groupId: gid)
         case .edit(let id):
-            if let p = model.profile(id) {
+            if let p = model.fresh(id) ?? model.profile(id) {
                 original = p
                 draft = ProfileDraft(p)
                 if let e = p.lastExit { checkResult = .success(e) }
@@ -398,13 +470,15 @@ struct ProfileEditorView: View {
         }
     }
 
-    private func parseQuick() {
+    private func parseProxyText() {
+        let t = proxyText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { proxyParseError = nil; return }
         do {
-            draft.fill(from: try ProxyConfig.parse(quickProxy, defaultKind: draft.proxyKind))
-            quickProxy = ""
-            error = nil
+            draft.fill(from: try ProxyConfig.parse(t, defaultKind: draft.proxyKind))
+            proxyParseError = nil
+            checkResult = nil  // 代理换了，之前的检测结果作废
         } catch {
-            self.error = error.localizedDescription
+            proxyParseError = error.localizedDescription
         }
     }
 
@@ -438,5 +512,33 @@ struct ProfileEditorView: View {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+}
+
+/// 表单里可展开/收起的一行（展开后的内容作为普通表单行显示）。
+struct ExpandRow: View {
+    let title: String
+    let subtitle: String?
+    @Binding var expanded: Bool
+
+    var body: some View {
+        Button {
+            withAnimation(.easeInOut(duration: 0.15)) { expanded.toggle() }
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                    if let subtitle, !expanded {
+                        Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .rotationEffect(.degrees(expanded ? 90 : 0))
+                    .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 }

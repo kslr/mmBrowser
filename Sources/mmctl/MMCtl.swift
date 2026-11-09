@@ -9,7 +9,7 @@ struct MMCtl: AsyncParsableCommand {
         abstract: "mmBrowser 命令行（P1 测试入口）",
         discussion: "数据目录默认 ~/Library/Application Support/mmBrowser，可用环境变量 MMBROWSER_HOME 覆盖。",
         subcommands: [Create.self, List.self, Show.self, Set_.self, Check.self, Launch.self, Plan.self,
-                      Remove.self, Restore.self, Serve.self, ChromeInfo.self]
+                      Remove.self, Restore.self, Serve.self, ChromeInfo.self, Cookies.self]
     )
 }
 
@@ -27,7 +27,7 @@ struct ProfileOptions: ParsableArguments {
     var proxyType: ProxyConfig.Kind = .socks5
     @Flag(help: "允许直连（不走代理）")
     var direct = false
-    @Option(help: "语言，如 en-US、ja-JP、zh-CN")
+    @Option(help: "语言：auto（跟随出口 IP，默认）或 en-US、ja-JP、zh-CN 等")
     var lang: String?
     @Option(help: "时区（IANA 名称，如 America/New_York）；auto 表示跟随出口 IP")
     var tz: String?
@@ -49,12 +49,14 @@ struct ProfileOptions: ParsableArguments {
     var geo: GeolocationPolicy?
     @Option(name: .customLong("arg"), parsing: .unconditionalSingleValue, help: "额外的 Chrome 启动参数，可以重复")
     var extraArgs: [String] = []
+    @Option(name: .customLong("ext"), help: "预装扩展（应用商店 ID 或链接），可以重复；--ext none 表示清空")
+    var extensions: [String] = []
 
     func apply(to p: inout Profile, store: Store) throws {
         if let proxy { p.proxy = try ProxyConfig.parse(proxy, defaultKind: proxyType); p.allowDirect = false }
         if direct { p.proxy = nil; p.allowDirect = true }
         if let lang {
-            guard LanguageTag.isValid(lang) else { throw ValidationError("无效的语言代码：\(lang)（例如 en-US、ja-JP）") }
+            guard LanguageTag.isValidSetting(lang) else { throw ValidationError("无效的语言代码：\(lang)（例如 auto、en-US、ja-JP）") }
             p.language = lang
         }
         if let alwaysOpenUrls { p.alwaysOpenStartURLs = alwaysOpenUrls }
@@ -83,6 +85,14 @@ struct ProfileOptions: ParsableArguments {
         }
         if let geo { p.geolocation = geo }
         if !extraArgs.isEmpty { p.extraArgs = extraArgs }
+        if extensions == ["none"] {
+            p.extensionIds = []
+        } else if !extensions.isEmpty {
+            p.extensionIds = try extensions.map {
+                guard let id = ExtensionID.extract(from: $0) else { throw ValidationError("无效的扩展 ID：\($0)") }
+                return id
+            }
+        }
     }
 }
 
@@ -96,12 +106,13 @@ func describe(_ p: Profile, groups: [ProfileGroup], running: Int32?) -> String {
         "  id:        \(p.id)",
         "  分组/标签:  \(group ?? "-") / \(p.tags.isEmpty ? "-" : p.tags.joined(separator: ", "))",
         "  代理:      \(p.proxy?.displayString ?? (p.allowDirect ? "直连（已允许）" : "未配置"))",
-        "  语言/时区:  \(p.language) / \(p.timezone ?? "自动（跟随出口 IP）")",
+        "  语言/时区:  \(p.language == LanguageTag.auto ? "自动（跟随出口 IP）" : p.language) / \(p.timezone ?? "自动（跟随出口 IP）")",
         "  定位权限:   \(p.geolocation == .block ? "禁止" : "询问")",
         "  窗口/颜色:  \(p.windowWidth.map { "\($0)x\(p.windowHeight ?? 0)" } ?? "默认") / \(p.effectiveThemeColor)",
         "  启动页:    \(p.startURLs.isEmpty ? "-" : p.startURLs.joined(separator: "  "))\(p.alwaysOpenStartURLs ? "（每次启动都打开）" : "（仅首次打开）")",
     ]
     if !p.extraArgs.isEmpty { lines.append("  额外参数:   \(p.extraArgs.joined(separator: " "))") }
+    if !p.extensionIds.isEmpty { lines.append("  预装扩展:   \(p.extensionIds.joined(separator: " "))") }
     if !p.notes.isEmpty { lines.append("  备注:      \(p.notes)") }
     if let e = p.lastExit {
         lines.append("  上次出口:   \(e.summary)  (\(e.provider), \(e.checkedAt.formatted(date: .numeric, time: .shortened)))")
@@ -219,8 +230,16 @@ struct Plan: AsyncParsableCommand {
         let store = try openStore()
         let p = try store.resolve(ref)
         let tz = p.timezone ?? p.lastExit?.timezone ?? "<出口时区>"
-        let plan = LaunchPlan.make(profile: p, userDataDir: store.paths.profileDir(p.id),
+        let lang = LanguageTag.resolve(p.language, countryCode: p.lastExit?.countryCode)
+        var checkURL = store.checkPage.url
+        if let url = checkURL, let open = SessionInspector.openTabURLs(userDataDir: store.paths.profileDir(p.id)),
+           open.contains(where: { SessionInspector.sameSite($0, url) }) {
+            checkURL = nil
+            print("（检测页在上次会话里还开着，这次不重复打开）")
+        }
+        let plan = LaunchPlan.make(profile: p, language: lang, userDataDir: store.paths.profileDir(p.id),
                                    localProxyPort: p.proxy == nil ? nil : 0, timezone: tz,
+                                   checkPageURL: checkURL,
                                    openStartURLs: p.lastOpenedAt == nil || p.alwaysOpenStartURLs)
         print("环境变量: TZ=\(tz)（本地入口端口在启动时分配，这里显示为 0）")
         print("参数:\n  " + plan.arguments.joined(separator: "\n  "))
@@ -261,6 +280,8 @@ struct Launch: AsyncParsableCommand {
             case .exitChecked(let e): print("  出口 \(e.summary)")
             case .seeding: print("· 写入 Chrome 配置")
             case .initializing: print("· 首次初始化（离线设置启动时恢复会话）")
+            case .installingExtensions: print("· 安装/启用扩展")
+            case .warning(let w): print("  ⚠️ \(w)")
             case .startingChrome: print("· 启动 Chrome")
             }
         }, proxyEvents: { event in
@@ -352,5 +373,51 @@ struct ChromeInfo: AsyncParsableCommand {
         let c = try ChromeInstallation()
         print("路径: \(c.executable.path)")
         print("版本: \(c.version ?? "?")")
+    }
+}
+
+struct Cookies: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "导入导出 Cookie（环境必须关闭）",
+        subcommands: [Export.self, Import.self])
+
+    struct Export: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "导出为 JSON（不给文件则输出到终端）")
+        @Argument(help: "环境：#序号、名称或 id 前缀") var ref: String
+        @Argument(help: "输出文件") var file: String?
+
+        func run() async throws {
+            let store = try openStore()
+            let p = try store.resolve(ref)
+            if (try? BrowserLauncher(store: store, chrome: ChromeInstallation()))?.runningPID(of: p.id) != nil {
+                throw CookieError.running
+            }
+            let cookies = try ChromeCookies.read(userDataDir: store.paths.profileDir(p.id))
+            let data = try ChromeCookies.exportJSON(cookies)
+            if let file {
+                try data.write(to: URL(fileURLWithPath: file))
+                print("已导出 \(cookies.count) 条 Cookie 到 \(file)")
+            } else {
+                print(String(decoding: data, as: UTF8.self))
+            }
+        }
+    }
+
+    struct Import: AsyncParsableCommand {
+        static let configuration = CommandConfiguration(abstract: "从 JSON 导入")
+        @Argument(help: "环境：#序号、名称或 id 前缀") var ref: String
+        @Argument(help: "JSON 文件") var file: String
+        @Flag(help: "先清空原有 Cookie") var replace = false
+
+        func run() async throws {
+            let store = try openStore()
+            let p = try store.resolve(ref)
+            if (try? BrowserLauncher(store: store, chrome: ChromeInstallation()))?.runningPID(of: p.id) != nil {
+                throw CookieError.running
+            }
+            let cookies = try ChromeCookies.importJSON(try Data(contentsOf: URL(fileURLWithPath: file)))
+            let n = try ChromeCookies.write(cookies, userDataDir: store.paths.profileDir(p.id), replaceAll: replace)
+            print("已导入 \(n) 条 Cookie")
+        }
     }
 }

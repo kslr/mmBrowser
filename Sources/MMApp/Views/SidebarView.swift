@@ -14,6 +14,18 @@ struct SidebarView: View {
             Section("环境") {
                 row("全部环境", "square.stack.3d.up", model.profiles.count).tag(SidebarItem.all)
                 row("运行中", "play.circle", model.profiles(in: .running).count).tag(SidebarItem.running)
+                HStack {
+                    Label("代理", systemImage: "network")
+                    Spacer()
+                    let expiring = model.expiringProxies().count
+                    if expiring > 0 {
+                        Text(verbatim: "\(expiring)").font(.caption.weight(.semibold)).foregroundStyle(.white)
+                            .padding(.horizontal, 6).padding(.vertical, 1)
+                            .background(.orange, in: Capsule())
+                            .help("\(expiring) 个代理已到期或 7 天内到期")
+                    }
+                }
+                .tag(SidebarItem.proxies)
             }
             Section {
                 ForEach(model.groups) { g in
