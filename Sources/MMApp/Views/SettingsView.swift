@@ -15,41 +15,41 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Google Chrome") {
-                LabeledContent("可执行文件") {
+                LabeledContent(L("settings.chrome.executable")) {
                     HStack {
                         Text(chromePath).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
-                        Button("选择…", action: pickChrome)
-                        Button("恢复默认") {
+                        Button(L("settings.chrome.choose"), action: pickChrome)
+                        Button(L("settings.chrome.reset")) {
                             chromePath = ChromeInstallation.defaultExecutable.path
                             model.reloadChrome()
                         }
                     }
                 }
-                LabeledContent("版本", value: model.chromeVersion ?? "未找到")
+                LabeledContent(L("settings.chrome.version"), value: model.chromeVersion ?? L("settings.chrome.notFound"))
             }
-            Section("环境") {
-                LanguagePicker(title: "新环境默认语言", language: $defaultLanguage)
-                Stepper("同时运行上限：\(maxRunning) 个", value: $maxRunning, in: 1...100)
-                    .help("16GB 内存建议不超过 10–12 个")
-                Stepper("回收站保留：\(trashDays) 天", value: $trashDays, in: 1...365)
-                    .help("超过天数的环境（连同浏览器数据）会在应用启动时彻底删除")
+            Section(L("settings.section.profiles")) {
+                LanguagePicker(title: L("settings.defaultLanguage"), language: $defaultLanguage)
+                Stepper(L("settings.maxRunning \(maxRunning)"), value: $maxRunning, in: 1...100)
+                    .help(L("settings.maxRunning.help"))
+                Stepper(L("settings.trashDays \(trashDays)"), value: $trashDays, in: 1...365)
+                    .help(L("settings.trashDays.help"))
             }
             Section {
-                Picker("检测页", selection: $checkChoice) {
+                Picker(L("settings.checkPage"), selection: $checkChoice) {
                     ForEach(CheckPage.Preset.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
                     Divider()
-                    Text("自定义网址").tag("custom")
-                    Text("不打开").tag("none")
+                    Text(L("settings.checkPage.custom")).tag("custom")
+                    Text(L("settings.checkPage.none")).tag("none")
                 }
                 .onChange(of: checkChoice) { saveCheckPage() }
                 if checkChoice == "custom" {
-                    TextField("网址", text: $customCheckURL, prompt: Text("https://…"))
+                    TextField(L("settings.checkPage.url"), text: $customCheckURL, prompt: Text(verbatim: "https://…"))
                         .onSubmit(saveCheckPage)
                 }
             } header: {
-                Text("启动时打开的检测页")
+                Text(L("settings.checkPage.header"))
             } footer: {
-                Text("每次启动环境都会打开它，用来确认出口 IP、位置和时区。对所有环境生效。")
+                Text(L("settings.checkPage.footer"))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section {
@@ -57,38 +57,38 @@ struct SettingsView: View {
                 ForEach(model.extensionLibrary) { e in
                     HStack {
                         VStack(alignment: .leading) {
-                            Text(e.name.isEmpty ? "（名称待安装后获取）" : e.name)
+                            Text(e.name.isEmpty ? L("settings.extensions.pendingName") : e.name)
                             Text(e.id).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
                         }
                         Spacer()
                         let used = model.profiles.filter { $0.extensionIds.contains(e.id) }.count
-                        Text("\(used) 个环境").foregroundStyle(.secondary)
+                        Text(L("common.profileCount \(used)")).foregroundStyle(.secondary)
                         Button(role: .destructive) {
                             model.saveExtensionLibrary(model.extensionLibrary.filter { $0.id != e.id })
                         } label: { Image(systemName: "minus.circle") }
                         .buttonStyle(.borderless)
-                        .help("从扩展库移除（已勾选它的环境不受影响，可以在环境里取消勾选）")
+                        .help(L("settings.extensions.remove.help"))
                     }
                 }
                 HStack {
-                    TextField("添加扩展", text: $newExtension, prompt: Text("粘贴 Chrome 应用商店链接或扩展 ID"))
+                    TextField(L("settings.extensions.add"), text: $newExtension, prompt: Text(L("settings.extensions.add.prompt")))
                         .onSubmit(addExtension)
-                    Button("添加", action: addExtension).disabled(newExtension.isEmpty)
+                    Button(L("settings.extensions.addButton"), action: addExtension).disabled(newExtension.isEmpty)
                 }
                 if let extError { Text(extError).font(.caption).foregroundStyle(.red) }
             } header: {
-                Text("扩展库")
+                Text(L("settings.extensions.header"))
             } footer: {
-                Text("添加后在环境的编辑表单或批量编辑里勾选，即可预装到对应环境。").font(.caption).foregroundStyle(.secondary)
+                Text(L("settings.extensions.footer")).font(.caption).foregroundStyle(.secondary)
             }
-            Section("数据") {
-                LabeledContent("数据目录") {
+            Section(L("settings.section.data")) {
+                LabeledContent(L("settings.data.folder")) {
                     HStack {
                         Text(model.paths.root.path).lineLimit(1).truncationMode(.middle).foregroundStyle(.secondary)
-                        Button("在 Finder 中显示") { NSWorkspace.shared.activateFileViewerSelecting([model.paths.root]) }
+                        Button(L("common.showInFinder")) { NSWorkspace.shared.activateFileViewerSelecting([model.paths.root]) }
                     }
                 }
-                Text("代理密码以明文保存在数据库里（文件权限仅本人可读），各环境保存的网站密码和 Cookie 也用公开密钥加密。请开启 FileVault。")
+                Text(L("settings.data.note"))
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -119,7 +119,7 @@ struct SettingsView: View {
 
     private func addExtension() {
         guard let id = ExtensionID.extract(from: newExtension) else {
-            extError = "没有找到有效的扩展 ID（32 个 a–p 的字母）"
+            extError = L("settings.extensions.invalid")
             return
         }
         var lib = model.extensionLibrary

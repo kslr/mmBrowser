@@ -57,7 +57,7 @@ public final class LocalProxyServer: @unchecked Sendable {
             }
             listener.start(queue: queue)
         }
-        guard let p = listener.port?.rawValue else { throw ProxyError.protocolError("监听端口未分配") }
+        guard let p = listener.port?.rawValue else { throw ProxyError.protocolError(L("error.proxy.noPort")) }
         lock.withLock {
             self.listener = listener
             self._port = p
@@ -100,12 +100,12 @@ public final class LocalProxyServer: @unchecked Sendable {
 
         var target: SocksTarget?
         do {
-            try await client.start(timeout: 5, label: "本地客户端")
+            try await client.start(timeout: 5, label: L("proxy.localClient"))
             client.armDeadline(10)
             target = try await readRequest(client)
             client.disarmDeadline()
         } catch ProxyError.protocolError(let why) {
-            onEvent?(.tunnelFailed(nil, "本地握手失败：\(why)"))
+            onEvent?(.tunnelFailed(nil, L("error.proxy.localHandshake \(why)")))
             return
         } catch {
             return  // 客户端没发完请求就断开或重置（Chrome 预建连接后放弃很常见），不算错误
@@ -138,16 +138,16 @@ public final class LocalProxyServer: @unchecked Sendable {
     /// 读取 SOCKS5 问候和 CONNECT 请求。不支持的情况会先回应失败再抛错。
     private func readRequest(_ c: AsyncConnection) async throws -> SocksTarget {
         let greet = try await c.readExactly(2)
-        guard greet[0] == 0x05 else { throw ProxyError.protocolError("不是 SOCKS5 请求") }
+        guard greet[0] == 0x05 else { throw ProxyError.protocolError(L("error.proxy.notSocksRequest")) }
         let methods = try await c.readExactly(Int(greet[1]))
         guard methods.contains(0x00) else {
             try await c.send(Data([0x05, 0xFF]))
-            throw ProxyError.protocolError("客户端不支持无认证方式")
+            throw ProxyError.protocolError(L("error.proxy.clientAuthentication"))
         }
         try await c.send(Data([0x05, 0x00]))
 
         let head = try await c.readExactly(4)
-        guard head[0] == 0x05 else { throw ProxyError.protocolError("请求版本错误") }
+        guard head[0] == 0x05 else { throw ProxyError.protocolError(L("error.proxy.requestVersion")) }
         let target: SocksTarget
         do {
             target = try await SocksTarget.read(atyp: head[3], from: c)
@@ -157,7 +157,7 @@ public final class LocalProxyServer: @unchecked Sendable {
         }
         guard head[1] == 0x01 else {
             try await c.send(Self.reply(7))
-            throw ProxyError.protocolError("只支持 CONNECT（收到命令 \(head[1])）")
+            throw ProxyError.protocolError(L("error.proxy.connectOnly \(Int(head[1]))"))
         }
         return target
     }

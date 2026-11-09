@@ -88,10 +88,10 @@ public final class BrowserLauncher: Sendable {
                         ids: profile.extensionIds, userDataDir: dir, chrome: chrome, proxyPort: port)
                     let failed = states.filter { $0.value == .notInstalled || $0.value == .pendingApproval }.keys
                     if !failed.isEmpty {
-                        progress?(.warning("有 \(failed.count) 个扩展没能装好，Chrome 启动后会继续尝试"))
+                        progress?(.warning(L("warning.extensions.incomplete \(failed.count)")))
                     }
                 } catch {
-                    progress?(.warning("扩展安装失败：\(error.localizedDescription)"))
+                    progress?(.warning(L("warning.extensions.failed \(error.localizedDescription)")))
                 }
             }
 
@@ -148,7 +148,7 @@ public final class BrowserLauncher: Sendable {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             guard process.isRunning else {
-                throw ChromeError.startFailed("Chrome 提前退出（退出码 \(process.terminationStatus)）")
+                throw ChromeError.startFailed(L("error.chrome.exited \(Int(process.terminationStatus))"))
             }
             if let target = try? FileManager.default.destinationOfSymbolicLink(atPath: lock),
                target.hasSuffix("-\(process.processIdentifier)") {
@@ -156,6 +156,6 @@ public final class BrowserLauncher: Sendable {
             }
             try await Task.sleep(for: .milliseconds(100))
         }
-        throw ChromeError.startFailed("等待 Chrome 就绪超时")
+        throw ChromeError.startFailed(L("error.chrome.readyTimeout"))
     }
 }

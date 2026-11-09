@@ -9,35 +9,35 @@ struct MenuBarContent: View {
     var body: some View {
         let active = model.profiles.filter { model.state(of: $0.id).isActive }
         if active.isEmpty {
-            Text("没有运行中的环境")
+            Text(L("menuBar.noneRunning"))
         } else {
-            Text("运行中（\(active.count)）")
+            Text(L("menuBar.running \(active.count)"))
             ForEach(active) { p in
                 Menu(String("#\(p.seq) \(p.name)\(suffix(p.id))")) {
-                    Button("切到前台") { model.activate(p.id) }
-                    Button("关闭") { model.stop(p.id) }
+                    Button(L("common.bringToFront")) { model.activate(p.id) }
+                    Button(L("common.close")) { model.stop(p.id) }
                 }
             }
             Divider()
-            Button("全部关闭") { Task { await model.stopAll() } }
+            Button(L("menuBar.closeAll")) { Task { await model.stopAll() } }
         }
         Divider()
-        Button("打开主窗口") {
+        Button(L("menuBar.openMainWindow")) {
             openWindow(id: "main")
             NSApp.activate()
         }
         .keyboardShortcut("o")
-        SettingsLink { Text("设置…") }
+        SettingsLink { Text(L("menuBar.settings")) }
         Divider()
-        Button("退出 mmBrowser") { NSApp.terminate(nil) }
+        Button(L("menuBar.quit")) { NSApp.terminate(nil) }
             .keyboardShortcut("q")
     }
 
     private func suffix(_ id: String) -> String {
         switch model.state(of: id) {
-        case .launching: "（启动中）"
-        case .orphan: "（残留·已断网）"
-        case .stopping: "（正在关闭）"
+        case .launching: L("menuBar.suffix.launching")
+        case .orphan: L("menuBar.suffix.orphan")
+        case .stopping: L("menuBar.suffix.stopping")
         default: ""
         }
     }

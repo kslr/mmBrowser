@@ -6,7 +6,7 @@ import SwiftUI
 struct TagTokenField: NSViewRepresentable {
     @Binding var tags: [String]
     var suggestions: [String] = []
-    var placeholder = "输入后按回车或逗号"
+    var placeholder = L("tagField.placeholder")
 
     func makeNSView(context: Context) -> NSTokenField {
         let f = NSTokenField()

@@ -14,7 +14,7 @@ struct ProfileRow: Identifiable {
 
     init(_ p: Profile) {
         profile = p
-        tagsText = p.tags.joined(separator: "、")
+        tagsText = p.tags.joined(separator: L("common.listSeparator"))
         if let e = p.lastExit {
             exitText = [e.countryCode, e.ip].compactMap { $0 }.joined(separator: " ")
         } else {
@@ -59,20 +59,20 @@ struct ProfileListView: View {
             }
             .width(min: 30, ideal: 36, max: 56)
 
-            TableColumn("名称", value: \.name) { r in
+            TableColumn(L("list.column.name"), value: \.name) { r in
                 HStack(spacing: 6) {
                     Circle().fill(Color(hex: r.profile.effectiveThemeColor)).frame(width: 8, height: 8)
                     Text(r.name).lineLimit(1)
                 }
             }
-            .width(min: 90, ideal: 130)
+            .width(min: 90, ideal: 125)
 
-            TableColumn("状态") { r in
+            TableColumn(L("list.column.status")) { r in
                 StatusBadge(state: model.state(of: r.id), error: model.lastError[r.id])
             }
-            .width(min: 70, ideal: 95)
+            .width(min: 70, ideal: 90)
 
-            TableColumn("标签", value: \.tagsText) { r in
+            TableColumn(L("list.column.tags"), value: \.tagsText) { r in
                 Text(r.tagsText.isEmpty ? "—" : r.tagsText)
                     .lineLimit(1)
                     .foregroundStyle(r.tagsText.isEmpty ? .tertiary : .primary)
@@ -80,7 +80,7 @@ struct ProfileListView: View {
             }
             .width(min: 60, ideal: 120)
 
-            TableColumn("代理") { r in
+            TableColumn(L("list.column.proxy")) { r in
                 HStack(spacing: 5) {
                     if let proxy = r.profile.proxy {
                         Text(proxy.kind == .socks5 ? "S5" : "HTTP")
@@ -89,41 +89,41 @@ struct ProfileListView: View {
                             .background(.quaternary, in: RoundedRectangle(cornerRadius: 3))
                         Text(verbatim: "\(proxy.host):\(proxy.port)").lineLimit(1).truncationMode(.middle)
                     } else {
-                        Text(r.profile.allowDirect ? "直连" : "未配置").foregroundStyle(.orange)
+                        Text(r.profile.allowDirect ? L("common.direct") : L("common.notConfigured")).foregroundStyle(.orange)
                     }
                 }
                 .help(r.profile.proxy?.displayString ?? "")
             }
             .width(min: 100, ideal: 155)
 
-            TableColumn("出口", value: \.exitText) { r in
+            TableColumn(L("list.column.exit"), value: \.exitText) { r in
                 let shared = model.sharedExitIP(r.profile)
                 HStack(spacing: 4) {
                     if model.checking.contains(r.id) { ProgressView().controlSize(.mini) }
                     if !shared.isEmpty { Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange) }
-                    Text(r.exitText.isEmpty ? "未检测" : r.exitText)
+                    Text(r.exitText.isEmpty ? L("common.notChecked") : r.exitText)
                         .foregroundStyle(r.exitText.isEmpty ? AnyShapeStyle(.tertiary) : shared.isEmpty ? AnyShapeStyle(.primary) : AnyShapeStyle(.orange))
                 }
                 .help(exitHelp(r.profile, shared: shared))
             }
             .width(min: 80, ideal: 115)
 
-            TableColumn("语言 / 时区") { r in
-                Text("\(r.profile.language == LanguageTag.auto ? "自动" : r.profile.language) · \(r.profile.timezone ?? "自动")")
+            TableColumn(L("list.column.languageTimezone")) { r in
+                Text(verbatim: "\(r.profile.language == LanguageTag.auto ? L("common.auto") : r.profile.language) · \(r.profile.timezone ?? L("common.auto"))")
                     .lineLimit(1).foregroundStyle(.secondary)
             }
-            .width(min: 80, ideal: 110)
+            .width(min: 80, ideal: 125)
 
-            TableColumn("最后打开", value: \.lastOpened) { r in
-                Text(r.profile.lastOpenedAt.map { $0.formatted(.relative(presentation: .named)) } ?? "从未")
+            TableColumn(L("list.column.lastOpened"), value: \.lastOpened) { r in
+                Text(r.profile.lastOpenedAt.map { $0.formatted(.relative(presentation: .named)) } ?? L("list.never"))
                     .foregroundStyle(.secondary)
             }
-            .width(min: 60, ideal: 70)
+            .width(min: 60, ideal: 75)
 
-            TableColumn("备注") { r in
+            TableColumn(L("list.column.notes")) { r in
                 Text(r.profile.notes).lineLimit(1).foregroundStyle(.secondary).help(r.profile.notes)
             }
-            .width(min: 60, ideal: 80)
+            .width(min: 60, ideal: 70)
         }
         .contextMenu(forSelectionType: String.self) { ids in
             menu(for: Array(ids))
@@ -132,25 +132,25 @@ struct ProfileListView: View {
             let list = Array(ids)
             if list.count == 1 { model.launch(list[0]) }  // 已在运行则切到前台
         }
-        .searchable(text: $search, placement: .toolbar, prompt: "搜索名称、备注、IP、标签…")
+        .searchable(text: $search, placement: .toolbar, prompt: L("list.search"))
         .toolbar { toolbar }
         .navigationTitle(title)
-        .navigationSubtitle("\(rows.count) 个环境")
-        .confirmationDialog("彻底删除 \(confirmPurge?.count ?? 0) 个环境？", isPresented: Binding(
+        .navigationSubtitle(L("common.profileCount \(rows.count)"))
+        .confirmationDialog(L("list.purge.title \(confirmPurge?.count ?? 0)"), isPresented: Binding(
             get: { confirmPurge != nil }, set: { if !$0 { confirmPurge = nil } })) {
-            Button("彻底删除", role: .destructive) { if let ids = confirmPurge { model.purge(ids); selection.removeAll() } }
+            Button(L("list.purge.confirm"), role: .destructive) { if let ids = confirmPurge { model.purge(ids); selection.removeAll() } }
         } message: {
-            Text("环境目录会一起删除，里面保存的密码、Cookie、浏览记录都无法恢复。")
+            Text(L("list.purge.message"))
         }
         .overlay {
             if rows.isEmpty {
                 ContentUnavailableView(emptyTitle, systemImage: isTrash ? "trash" : "square.stack.3d.up",
-                                       description: Text(isTrash || !search.isEmpty ? "" : "点工具栏的 + 新建环境"))
+                                       description: Text(isTrash || !search.isEmpty ? "" : L("list.empty.hint")))
             }
         }
-        .confirmationDialog("导入 \(pendingCSV?.count ?? 0) 个环境？", isPresented: Binding(
+        .confirmationDialog(L("list.importCSV.title \(pendingCSV?.count ?? 0)"), isPresented: Binding(
             get: { pendingCSV != nil }, set: { if !$0 { pendingCSV = nil } })) {
-            Button("导入") { if let rows = pendingCSV { model.importCSV(rows) } }
+            Button(L("list.importCSV.confirm")) { if let rows = pendingCSV { model.importCSV(rows) } }
         } message: {
             Text(csvSummary)
         }
@@ -159,11 +159,12 @@ struct ProfileListView: View {
             if !isTrash, !expiring.isEmpty {
                 HStack {
                     Image(systemName: "calendar.badge.exclamationmark").foregroundStyle(.orange)
-                    Text("\(expiring.count) 个代理已到期或 7 天内到期：" +
-                         expiring.prefix(3).map { "#\($0.seq) \($0.name)" }.joined(separator: "、") + (expiring.count > 3 ? "……" : ""))
+                    let names = expiring.prefix(3).map { "#\($0.seq) \($0.name)" }.joined(separator: L("common.listSeparator"))
+                        + (expiring.count > 3 ? L("common.ellipsis") : "")
+                    Text(L("list.expiringBanner \(expiring.count) \(names)"))
                         .lineLimit(1)
                     Spacer()
-                    Button("查看", action: showProxies).controlSize(.small)
+                    Button(L("list.expiringBanner.show"), action: showProxies).controlSize(.small)
                 }
                 .padding(.horizontal, 12).padding(.vertical, 6)
                 .background(.orange.opacity(0.12))
@@ -174,32 +175,31 @@ struct ProfileListView: View {
 
     private var csvSummary: String {
         guard let rows = pendingCSV else { return "" }
-        var s = "代理：\(rows.filter { $0.profile.proxy != nil }.count) 个环境有代理。"
-        s += "\n代理已被其它环境占用的行会导入失败，结束后会列出。"
-        return s
+        return L("list.importCSV.message \(rows.filter { $0.profile.proxy != nil }.count)")
     }
 
     private var title: String {
         switch scope {
-        case .all: "全部环境"
-        case .running: "运行中"
-        case .untagged: "无标签"
-        case .tag(let t): "标签：\(t)"
-        case .proxies: "代理"
-        case .trash: "回收站"
+        case .all: L("sidebar.all")
+        case .running: L("sidebar.running")
+        case .untagged: L("sidebar.untagged")
+        case .tag(let t): L("list.title.tag \(t)")
+        case .proxies: L("sidebar.proxies")
+        case .trash: L("sidebar.trash")
         }
     }
 
     private var emptyTitle: String {
-        if !search.isEmpty { return "没有匹配的环境" }
-        return isTrash ? "回收站是空的" : "还没有环境"
+        if !search.isEmpty { return L("list.empty.noMatch") }
+        return isTrash ? L("list.empty.trash") : L("list.empty.none")
     }
 
     private func exitHelp(_ p: Profile, shared: [Profile]) -> String {
         guard let e = p.lastExit else { return "" }
-        var s = "\(e.summary)\n\(e.org ?? "")\n检测于 \(e.checkedAt.formatted())"
+        var s = "\(e.summary)\n\(e.org ?? "")\n" + L("list.exit.checkedAt \(e.checkedAt.formatted())")
         if !shared.isEmpty {
-            s += "\n\n⚠️ 与 " + shared.map { "#\($0.seq) \($0.name)" }.joined(separator: "、") + " 的出口 IP 相同"
+            let names = shared.map { "#\($0.seq) \($0.name)" }.joined(separator: L("common.listSeparator"))
+            s += "\n\n" + L("list.exit.shared \(names)")
         }
         return s
     }
@@ -216,40 +216,40 @@ struct ProfileListView: View {
     private var toolbar: some ToolbarContent {
         if isTrash {
             ToolbarItemGroup {
-                Button { model.restore(selected); selection.removeAll() } label: { Label("恢复", systemImage: "arrow.uturn.backward") }
+                Button { model.restore(selected); selection.removeAll() } label: { Label(L("list.restore"), systemImage: "arrow.uturn.backward") }
                     .disabled(selection.isEmpty)
-                Button(role: .destructive) { confirmPurge = selected } label: { Label("彻底删除", systemImage: "trash.slash") }
+                Button(role: .destructive) { confirmPurge = selected } label: { Label(L("list.purge.confirm"), systemImage: "trash.slash") }
                     .disabled(selection.isEmpty)
             }
         } else {
             ToolbarItemGroup {
-                Button { model.launch(selected) } label: { Label("启动", systemImage: "play.fill") }
-                    .help("启动选中的环境（已运行的切到前台）")
+                Button { model.launch(selected) } label: { Label(L("list.launch"), systemImage: "play.fill") }
+                    .help(L("list.launch.help"))
                     .disabled(selection.isEmpty)
-                Button { model.stop(selected) } label: { Label("关闭", systemImage: "stop.fill") }
-                    .help("关闭选中的环境")
+                Button { model.stop(selected) } label: { Label(L("common.close"), systemImage: "stop.fill") }
+                    .help(L("list.close.help"))
                     .disabled(!selected.contains { model.state(of: $0).isActive })
-                Button { selected.forEach(model.check) } label: { Label("检测代理", systemImage: "antenna.radiowaves.left.and.right") }
-                    .help("检测选中环境的代理出口")
+                Button { selected.forEach(model.check) } label: { Label(L("list.checkProxy"), systemImage: "antenna.radiowaves.left.and.right") }
+                    .help(L("list.checkProxy.help"))
                     .disabled(selection.isEmpty)
                 Button {
                     if let id = selected.first { editing = .edit(id) }
-                } label: { Label("编辑", systemImage: "pencil") }
+                } label: { Label(L("list.edit"), systemImage: "pencil") }
                     .disabled(selection.count != 1)
                 Menu {
-                    Button("新建环境…") { editing = .new(tag: currentTag) }
-                    Button("批量新建…") { batch = .create(tag: currentTag) }
+                    Button(L("list.new.profile")) { editing = .new(tag: currentTag) }
+                    Button(L("list.new.batch")) { batch = .create(tag: currentTag) }
                     Divider()
-                    Button("从 CSV 导入…") { pendingCSV = model.pickCSVForImport() }
-                    Button("导入环境备份…") { model.importBackups() }
+                    Button(L("list.new.importCSV")) { pendingCSV = model.pickCSVForImport() }
+                    Button(L("list.new.importBackups")) { model.importBackups() }
                     Divider()
-                    Button("把当前列表导出为 CSV…") { model.exportCSV(rows.map(\.id)) }
+                    Button(L("list.new.exportCSV")) { model.exportCSV(rows.map(\.id)) }
                 } label: {
-                    Label("新建环境", systemImage: "plus")
+                    Label(L("menu.newProfile"), systemImage: "plus")
                 } primaryAction: {
                     editing = .new(tag: currentTag)
                 }
-                .help("新建环境（⌘N）；点箭头可批量新建、导入")
+                .help(L("list.new.help"))
             }
         }
     }
@@ -259,46 +259,46 @@ struct ProfileListView: View {
         if ids.isEmpty {
             EmptyView()
         } else if isTrash {
-            Button("恢复") { model.restore(ids) }
-            Button("彻底删除…", role: .destructive) { confirmPurge = ids }
+            Button(L("list.restore")) { model.restore(ids) }
+            Button(L("list.menu.purge"), role: .destructive) { confirmPurge = ids }
         } else {
             let anyActive = ids.contains { model.state(of: $0).isActive }
-            Button("启动") { model.launch(ids) }
+            Button(L("list.launch")) { model.launch(ids) }
             if anyActive {
-                Button("切到前台") { ids.forEach(model.activate) }
-                Button("关闭") { model.stop(ids) }
+                Button(L("common.bringToFront")) { ids.forEach(model.activate) }
+                Button(L("common.close")) { model.stop(ids) }
             }
             Divider()
-            if ids.count == 1 { Button("编辑…") { editing = .edit(ids[0]) } }
-            Button("批量编辑…") { batch = .edit(ids) }
-            Button("检测代理") { model.checkMany(ids) }
-            Button("分配代理…") { batch = .assignProxies(ids) }
-            Button("设置代理到期日…") { batch = .expiry(ids) }
-            Menu("添加标签") {
+            if ids.count == 1 { Button(L("list.menu.edit")) { editing = .edit(ids[0]) } }
+            Button(L("list.menu.batchEdit")) { batch = .edit(ids) }
+            Button(L("list.checkProxy")) { model.checkMany(ids) }
+            Button(L("common.assignProxies")) { batch = .assignProxies(ids) }
+            Button(L("list.menu.setExpiry")) { batch = .expiry(ids) }
+            Menu(L("list.menu.addTag")) {
                 ForEach(model.allTags, id: \.self) { t in Button(t) { model.addTag(t, to: ids) } }
                 if !model.allTags.isEmpty { Divider() }
-                Button("新标签…") { batch = .edit(ids) }
+                Button(L("list.menu.newTag")) { batch = .edit(ids) }
             }
             let present = Array(Set(ids.compactMap(model.profile).flatMap(\.tags))).sorted()
             if !present.isEmpty {
-                Menu("移除标签") {
+                Menu(L("list.menu.removeTag")) {
                     ForEach(present, id: \.self) { t in Button(t) { model.removeTag(t, from: ids) } }
                 }
             }
             if ids.count == 1 {
-                Menu("复制环境") {
-                    Button("只复制设置") { model.duplicate(ids[0], copyData: false) }
-                    Button("连同浏览器数据（登录状态、Cookie、密码、扩展）") { model.duplicate(ids[0], copyData: true) }
+                Menu(L("list.menu.duplicate")) {
+                    Button(L("list.menu.duplicate.settings")) { model.duplicate(ids[0], copyData: false) }
+                    Button(L("list.menu.duplicate.withData")) { model.duplicate(ids[0], copyData: true) }
                 }
                 .disabled(anyActive)
-                Menu("Cookie") {
-                    Button("导出…") { model.exportCookies(ids[0]) }
-                    Button("导入（与现有合并）…") { model.importCookies(ids[0], replaceAll: false) }
-                    Button("导入（先清空现有）…") { model.importCookies(ids[0], replaceAll: true) }
+                Menu(L("list.menu.cookies")) {
+                    Button(L("list.menu.cookies.export")) { model.exportCookies(ids[0]) }
+                    Button(L("list.menu.cookies.importMerge")) { model.importCookies(ids[0], replaceAll: false) }
+                    Button(L("list.menu.cookies.importReplace")) { model.importCookies(ids[0], replaceAll: true) }
                 }
                 .disabled(anyActive)
-                Button("在 Finder 中显示环境目录") { model.revealInFinder(ids[0]) }
-                Button("复制代理地址") {
+                Button(L("list.menu.revealInFinder")) { model.revealInFinder(ids[0]) }
+                Button(L("common.copyProxyAddress")) {
                     if let p = model.profile(ids[0])?.proxy {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(p.urlString, forType: .string)
@@ -306,11 +306,11 @@ struct ProfileListView: View {
                 }
             }
             Divider()
-            Button("导出为 CSV…") { model.exportCSV(ids) }
-            Button("导出环境备份…") { model.exportBackups(ids) }
+            Button(L("list.menu.exportCSV")) { model.exportCSV(ids) }
+            Button(L("list.menu.exportBackups")) { model.exportBackups(ids) }
                 .disabled(anyActive)
             Divider()
-            Button("移到回收站", role: .destructive) { model.moveToTrash(ids); selection.subtract(ids) }
+            Button(L("list.menu.moveToTrash"), role: .destructive) { model.moveToTrash(ids); selection.subtract(ids) }
                 .disabled(anyActive)
         }
     }
@@ -326,23 +326,23 @@ struct StatusBadge: View {
             case .idle:
                 if error != nil {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
-                    Text("失败").foregroundStyle(.red)
+                    Text(L("common.failed")).foregroundStyle(.red)
                 } else {
                     Circle().fill(.quaternary).frame(width: 7, height: 7)
-                    Text("未运行").foregroundStyle(.secondary)
+                    Text(L("status.idle")).foregroundStyle(.secondary)
                 }
             case .launching(let stage):
                 ProgressView().controlSize(.mini)
                 Text(stage).foregroundStyle(.secondary)
             case .running:
                 Circle().fill(.green).frame(width: 7, height: 7)
-                Text("运行中")
+                Text(L("status.running"))
             case .orphan:
                 Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
-                Text("残留·已断网").foregroundStyle(.orange)
+                Text(L("status.orphan")).foregroundStyle(.orange)
             case .stopping:
                 ProgressView().controlSize(.mini)
-                Text("正在关闭").foregroundStyle(.secondary)
+                Text(L("status.stopping")).foregroundStyle(.secondary)
             }
         }
         .lineLimit(1)
@@ -352,8 +352,8 @@ struct StatusBadge: View {
     private var helpText: String {
         switch state {
         case .idle: error ?? ""
-        case .running(let r): "PID \(r.pid) · 本地入口 127.0.0.1:\(r.proxy?.port ?? 0) · 时区 \(r.timezone)"
-        case .orphan(let pid): "PID \(pid) 不是本次启动的（可能是应用上次异常退出），它的代理入口已关闭，浏览器无法联网。关闭后重新启动即可。"
+        case .running(let r): L("status.running.help \(Int(r.pid)) \(Int(r.proxy?.port ?? 0)) \(r.timezone)")
+        case .orphan(let pid): L("status.orphan.help \(Int(pid))")
         default: ""
         }
     }

@@ -64,8 +64,8 @@ struct ImportTests {
         #expect(rows.map(\.profile.name) == ["A", "B"])
         #expect(rows[0].profile.proxy?.port == 1080 && rows[0].profile.timezone == nil)
         #expect(rows[1].profile.allowDirect && rows[1].profile.language == "zh-CN")
-        #expect(throws: ImportError.missingColumn("名称（name）")) { try ProfileCSV.parseImport("proxy\n1.2.3.4:1\n") }
-        #expect(throws: ImportError.badLine(3, "时区无效：Mars/Base")) { try ProfileCSV.parseImport("名称,时区\nA,UTC\nB,Mars/Base\n") }
+        #expect(throws: ImportError.missingColumn(L("csv.requiredName"))) { try ProfileCSV.parseImport("proxy\n1.2.3.4:1\n") }
+        #expect(throws: ImportError.badLine(3, L("error.csv.timezone \("Mars/Base")"))) { try ProfileCSV.parseImport("名称,时区\nA,UTC\nB,Mars/Base\n") }
     }
 
     @Test func extensionID() {
@@ -89,7 +89,7 @@ struct ImportTests {
         p.language = "de-DE"
         let a = try s.insert(p)
         let b = try s.duplicate(a.id)
-        #expect(b.name == "src 副本" && b.proxy == nil && b.tags == ["t"] && b.language == "de-DE" && b.seq == 2)
+        #expect(b.name == L("profile.duplicateName \(a.name)") && b.proxy == nil && b.tags == ["t"] && b.language == "de-DE" && b.seq == 2)
 
         try s.softDelete(b.id)
         #expect(try s.purgeTrash(olderThanDays: 30).isEmpty)

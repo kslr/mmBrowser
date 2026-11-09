@@ -15,7 +15,7 @@ struct CDPJSON: @unchecked Sendable {
 actor CDPClient {
     struct CDPError: Error, LocalizedError {
         let message: String
-        var errorDescription: String? { "CDP：\(message)" }
+        var errorDescription: String? { L("error.cdp.message \(message)") }
     }
 
     private let task: URLSessionWebSocketTask
@@ -55,7 +55,7 @@ actor CDPClient {
         guard let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let id = obj["id"] as? Int, let cont = pending.removeValue(forKey: id) else { return }
         if let err = obj["error"] as? [String: Any] {
-            cont.resume(throwing: CDPError(message: err["message"] as? String ?? "未知错误"))
+            cont.resume(throwing: CDPError(message: err["message"] as? String ?? L("error.cdp.unknown")))
         } else {
             cont.resume(returning: obj["result"] as? [String: Any] ?? [:])
         }
@@ -96,7 +96,7 @@ actor CDPClient {
                                ["expression": expression, "awaitPromise": true, "returnByValue": true],
                                sessionId: sessionId)
         if r["exceptionDetails"].value != nil {
-            throw CDPError(message: r["exceptionDetails"]["exception"]["description"].string ?? "页面脚本异常")
+            throw CDPError(message: r["exceptionDetails"]["exception"]["description"].string ?? L("error.cdp.script"))
         }
         return r["result"]["value"]
     }

@@ -60,10 +60,10 @@ public enum ProxyParseError: Error, LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .empty: "代理字符串为空"
-        case .unsupportedScheme(let s): "不支持的代理类型：\(s)（支持 socks5、http）"
-        case .invalidFormat(let s): "无法识别的代理格式：\(s)"
-        case .invalidPort(let s): "端口无效：\(s)"
+        case .empty: L("error.proxy.parse.empty")
+        case .unsupportedScheme(let s): L("error.proxy.parse.scheme \(s)")
+        case .invalidFormat(let s): L("error.proxy.parse.format \(s)")
+        case .invalidPort(let s): L("error.proxy.parse.port \(s)")
         }
     }
 }

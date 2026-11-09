@@ -12,6 +12,13 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/mmBrowser "$APP/Contents/MacOS/mmBrowser"
 cp .build/release/mmctl "$APP/Contents/MacOS/mmctl"
+for target in MMCore MMApp mmctl; do
+    cp -R ".build/release/mmBrowser_${target}.bundle" "$APP/Contents/Resources/"
+done
+for lang in en zh-Hans; do
+    mkdir -p "$APP/Contents/Resources/$lang.lproj"
+    echo '"CFBundleDisplayName" = "mmBrowser";' > "$APP/Contents/Resources/$lang.lproj/InfoPlist.strings"
+done
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -21,6 +28,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleIdentifier</key><string>local.mmbrowser</string>
     <key>CFBundleName</key><string>mmBrowser</string>
     <key>CFBundleDisplayName</key><string>mmBrowser</string>
+    <key>CFBundleDevelopmentRegion</key><string>en</string>
+    <key>CFBundleLocalizations</key><array><string>en</string><string>zh-Hans</string></array>
     <key>CFBundleExecutable</key><string>mmBrowser</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>${VERSION}</string>

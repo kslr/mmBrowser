@@ -39,6 +39,15 @@ open build/mmBrowser.app
 
 数据目录默认是 `~/Library/Application Support/mmBrowser`，设置环境变量 `MMBROWSER_HOME` 可以换到别处（比如测试时用临时目录）。
 
+## 本地化
+
+支持简体中文和英文，跟随系统语言（也可以在"系统设置 > 通用 > 语言与地区"里单独给 mmBrowser 选语言）。
+
+- 翻译在 `Sources/<模块>/Resources/{en,zh-Hans}.lproj/Localizable.strings`，key 用语义命名（如 `list.empty.trash`），规则见 [docs/plans/i18n.md](docs/plans/i18n.md)。
+- 代码里用户可见的文字一律写 `L("key")`；带插值时 `L("alert.launchFailed \(name)")` 对应的 key 是 `alert.launchFailed %@`。
+- 加完文案跑 `python3 scripts/check-l10n.py`，检查漏翻、两种语言 key 不一致和遗留的中文字面量。
+- 临时用英文看界面：`.build/debug/mmBrowser -AppleLanguages '(en)'`。
+
 ## 许可证
 
 [GPL-3.0](LICENSE)。Copyright (C) 2026 kslr

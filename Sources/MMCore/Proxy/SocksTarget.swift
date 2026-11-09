@@ -76,11 +76,11 @@ public struct SocksTarget: Hashable, Sendable, CustomStringConvertible {
             let len = Int(try await c.readExactly(1)[0])
             let raw = try await c.readExactly(len)
             guard let s = String(data: raw, encoding: .utf8), !s.isEmpty else {
-                throw ProxyError.protocolError("域名编码无效")
+                throw ProxyError.protocolError(L("error.proxy.domainEncoding"))
             }
             host = .domain(s)
         case 0x04: host = .ipv6(try await c.readExactly(16))
-        default: throw ProxyError.protocolError("不支持的地址类型 \(atyp)")
+        default: throw ProxyError.protocolError(L("error.proxy.addressType \(Int(atyp))"))
         }
         let p = try await c.readExactly(2)
         return SocksTarget(host: host, port: UInt16(p[0]) << 8 | UInt16(p[1]))

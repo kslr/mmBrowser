@@ -36,7 +36,7 @@ public enum ProxyList {
         for l in lines {
             if case .success(let p) = l.result {
                 let key = "\(p.host.lowercased()):\(p.port):\(p.username ?? "")"
-                if !seen.insert(key).inserted { throw ImportError.badLine(l.lineNumber, "和前面的行重复：\(p.displayString)") }
+                if !seen.insert(key).inserted { throw ImportError.badLine(l.lineNumber, L("error.import.duplicateProxy \(p.displayString)")) }
             }
         }
         return lines.compactMap { try? $0.result.get() }
@@ -50,9 +50,9 @@ public enum ImportError: Error, LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .badLine(let n, let why): "第 \(n) 行：\(why)"
-        case .missingColumn(let c): "缺少必需的列：\(c)"
-        case .empty: "没有内容"
+        case .badLine(let n, let why): L("error.import.badLine \(n) \(why)")
+        case .missingColumn(let c): L("error.import.missingColumn \(c)")
+        case .empty: L("error.import.empty")
         }
     }
 }

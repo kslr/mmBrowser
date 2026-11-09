@@ -16,7 +16,7 @@ struct MMBrowserApp: App {
         .defaultSize(width: 1280, height: 760)
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("新建环境") { NotificationCenter.default.post(name: .newProfile, object: nil) }
+                Button(L("menu.newProfile")) { NotificationCenter.default.post(name: .newProfile, object: nil) }
                     .keyboardShortcut("n")
             }
         }
@@ -78,10 +78,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let active = model.states.values.filter(\.isActive).count
             guard active > 0 else { return .terminateNow }
             let alert = NSAlert()
-            alert.messageText = "还有 \(active) 个环境在运行"
-            alert.informativeText = "退出 mmBrowser 会关闭它们的本地代理入口，浏览器将无法联网。要先关闭这些浏览器再退出吗？"
-            alert.addButton(withTitle: "关闭浏览器并退出")
-            alert.addButton(withTitle: "取消")
+            alert.messageText = L("quit.title \(active)")
+            alert.informativeText = L("quit.message")
+            alert.addButton(withTitle: L("quit.confirm"))
+            alert.addButton(withTitle: L("common.cancel"))
             NSApp.activate()
             guard alert.runModal() == .alertFirstButtonReturn else { return .terminateCancel }
             Task { @MainActor in

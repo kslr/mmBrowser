@@ -87,9 +87,9 @@ public enum CookieError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .noDatabase: "这个环境还没有 Cookie 数据库，请先启动一次"
-        case .running: "环境正在运行，请先关闭再导入导出 Cookie"
-        case .unsupportedVersion(let v): "不认识的 Cookies 数据库版本 \(v)"
+        case .noDatabase: L("error.cookies.noDatabase")
+        case .running: L("error.cookies.running")
+        case .unsupportedVersion(let v): L("error.cookies.version \(v)")
         }
     }
 }

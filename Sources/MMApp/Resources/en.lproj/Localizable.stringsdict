@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>alert.runningLimit.message %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld profile wasn’t launched. Close some profiles or raise the limit in Settings.</string>
+			<key>other</key>
+			<string>%lld profiles weren’t launched. Close some profiles or raise the limit in Settings.</string>
+		</dict>
+	</dict>
+	<key>assign.header %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Assign proxies one by one, in number order, to the %lld selected profile</string>
+			<key>other</key>
+			<string>Assign proxies one by one, in number order, to the %lld selected profiles</string>
+		</dict>
+	</dict>
+	<key>batch.proxyList.recognized %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld proxy recognized</string>
+			<key>other</key>
+			<string>%lld proxies recognized</string>
+		</dict>
+	</dict>
+	<key>batchCreate.count %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Without proxies, create %lld profile (assign proxies later)</string>
+			<key>other</key>
+			<string>Without proxies, create %lld profiles (assign proxies later)</string>
+		</dict>
+	</dict>
+	<key>batchEdit.confirm %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Apply to %lld Profile</string>
+			<key>other</key>
+			<string>Apply to %lld Profiles</string>
+		</dict>
+	</dict>
+	<key>batchEdit.header %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Changes %lld profile. Only items that are turned on are changed.</string>
+			<key>other</key>
+			<string>Changes %lld profiles. Only items that are turned on are changed.</string>
+		</dict>
+	</dict>
+	<key>common.profileCount %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld profile</string>
+			<key>other</key>
+			<string>%lld profiles</string>
+		</dict>
+	</dict>
+	<key>editor.more.extensions %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld extension</string>
+			<key>other</key>
+			<string>%lld extensions</string>
+		</dict>
+	</dict>
+	<key>expiry.header %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Proxy Expiration Date for %lld Profile</string>
+			<key>other</key>
+			<string>Proxy Expiration Date for %lld Profiles</string>
+		</dict>
+	</dict>
+	<key>expiry.inDays %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>In %lld day</string>
+			<key>other</key>
+			<string>In %lld days</string>
+		</dict>
+	</dict>
+	<key>expiry.overdue %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Expired %lld day ago</string>
+			<key>other</key>
+			<string>Expired %lld days ago</string>
+		</dict>
+	</dict>
+	<key>list.importCSV.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Import %lld profile?</string>
+			<key>other</key>
+			<string>Import %lld profiles?</string>
+		</dict>
+	</dict>
+	<key>list.purge.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Permanently delete %lld profile?</string>
+			<key>other</key>
+			<string>Permanently delete %lld profiles?</string>
+		</dict>
+	</dict>
+	<key>quit.title %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld profile is still running</string>
+			<key>other</key>
+			<string>%lld profiles are still running</string>
+		</dict>
+	</dict>
+	<key>settings.trashDays %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Keep in Trash: %lld day</string>
+			<key>other</key>
+			<string>Keep in Trash: %lld days</string>
+		</dict>
+	</dict>
+	<key>sidebar.deleteTag.message %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>This only removes the tag from %lld profile. The profile itself isn’t deleted.</string>
+			<key>other</key>
+			<string>This only removes the tag from %lld profiles. The profiles themselves aren’t deleted.</string>
+		</dict>
+	</dict>
+	<key>sidebar.expiring.help %lld</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%lld proxy expired or expiring within 7 days</string>
+			<key>other</key>
+			<string>%lld proxies expired or expiring within 7 days</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

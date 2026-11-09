@@ -8,7 +8,7 @@ import SwiftUI
 enum SnapshotRunner {
     static func run(outputDir: URL) async {
         guard ProcessInfo.processInfo.environment["MMBROWSER_HOME"] != nil else {
-            FileHandle.standardError.write(Data("截图模式需要设置 MMBROWSER_HOME 指向临时目录\n".utf8))
+            FileHandle.standardError.write(Data((L("snapshot.error.home") + "\n").utf8))
             return
         }
         let model = AppModel.shared
@@ -50,14 +50,14 @@ enum SnapshotRunner {
         var p = Profile(name: "自检-直连", startURLs: ["https://example.com/"])
         p.allowDirect = true
         p.extraArgs = ["--window-position=-3000,-3000"]
-        guard let saved = try? store.insert(p) else { print("selftest: 创建环境失败"); return }
+        guard let saved = try? store.insert(p) else { print("selftest: " + L("snapshot.error.create")); return }
         model.refreshFromDisk()
 
         func waitFor(_ what: String, timeout: TimeInterval, _ cond: () -> Bool) async -> Bool {
             let deadline = Date().addingTimeInterval(timeout)
             while !cond(), Date() < deadline { try? await Task.sleep(for: .milliseconds(200)) }
             let ok = cond()
-            print("selftest: \(what) \(ok ? "✓" : "✗ 超时")")
+            print("selftest: \(what) \(ok ? "✓" : "✗ " + L("snapshot.timeout"))")
             return ok
         }
 
@@ -67,11 +67,11 @@ enum SnapshotRunner {
             return false
         }
         if !started {
-            print("selftest: 错误 = \(model.lastError[saved.id] ?? model.alert?.message ?? "无")")
+            print("selftest: " + L("snapshot.error \(model.lastError[saved.id] ?? model.alert?.message ?? L("snapshot.none"))"))
             return
         }
         if case .running(let r) = model.state(of: saved.id) {
-            print("selftest: PID \(r.pid)，本地入口 127.0.0.1:\(r.proxy?.port ?? 0)，出口 \(r.exit?.summary ?? "-")")
+            print("selftest: " + L("snapshot.running \(Int(r.pid)) \(Int(r.proxy?.port ?? 0)) \(r.exit?.summary ?? "-")"))
         }
         await render(ContentView().environment(model), size: CGSize(width: 1280, height: 720),
                      to: outputDir.appendingPathComponent("running.png"))
@@ -102,7 +102,7 @@ enum SnapshotRunner {
 
         // 两个本地上游（直连出口），当作两个不同的代理
         let up1 = LocalProxyServer(upstream: .direct), up2 = LocalProxyServer(upstream: .direct)
-        guard let p1 = try? await up1.start(), let p2 = try? await up2.start() else { print("batch: 上游启动失败"); return false }
+        guard let p1 = try? await up1.start(), let p2 = try? await up2.start() else { print("batch: " + L("snapshot.error.upstream")); return false }
         defer { up1.stop(); up2.stop() }
         let proxies = [ProxyConfig(kind: .socks5, host: "127.0.0.1", port: Int(p1)),
                        ProxyConfig(kind: .socks5, host: "127.0.0.1", port: Int(p2))]
@@ -152,8 +152,7 @@ enum SnapshotRunner {
         check("批量编辑：标签和语言", ids.allSatisfy { model.fresh($0)?.tags.contains("自检标签") == true && model.fresh($0)?.language == "ja-JP" })
 
         // 5. 复制
-        model.duplicate(ids[0], copyData: false)
-        let copy = try? store.profiles().first { $0.name == "自检-01 副本" }
+        let copy = model.duplicate(ids[0], copyData: false)
         check("复制环境：不带代理、保留标签", copy?.proxy == nil && copy?.tags.contains("自检标签") == true)
 
         // 6. CSV 往返
@@ -165,7 +164,7 @@ enum SnapshotRunner {
         let oldMax = UserDefaults.standard.object(forKey: AppModel.maxRunningKey)
         UserDefaults.standard.set(1, forKey: AppModel.maxRunningKey)
         model.launch(ids)
-        check("超过上限时提示", model.alert?.title.contains("上限") == true)
+        check("超过上限时提示", model.alert?.title == L("alert.runningLimit.title \(1)"))
         model.alert = nil
         let oneRunning = await waitFor(60) { ids.contains { if case .running = model.state(of: $0) { true } else { false } } }
         check("只启动了 1 个", oneRunning && model.states.values.filter(\.isActive).count == 1)
@@ -181,7 +180,7 @@ enum SnapshotRunner {
         model.moveToTrash(ids + [copy?.id].compactMap { $0 })
         model.purge(ids + [copy?.id].compactMap { $0 })
         _ = store
-        print("batch: 完成，失败 \(failures) 项")
+        print("batch: " + L("snapshot.batch.done \(failures)"))
         return failures == 0
     }
 

@@ -39,7 +39,7 @@ final class AsyncConnection: @unchecked Sendable {
             // 超时后如果还没就绪就取消连接；已经 resume 过则什么都不做（由 OnceFlag 保证）
             let timer = DispatchWorkItem {
                 if once.fire() {
-                    cont.resume(throwing: ProxyError.timeout("连接 \(label)"))
+                    cont.resume(throwing: ProxyError.timeout(L("error.proxy.connecting \(label)")))
                     conn.cancel()
                 }
             }
@@ -109,7 +109,7 @@ final class AsyncConnection: @unchecked Sendable {
                 buffer.removeSubrange(..<r.upperBound)
                 return Data(out)
             }
-            if buffer.count > maxLength { throw ProxyError.protocolError("响应头过长") }
+            if buffer.count > maxLength { throw ProxyError.protocolError(L("error.proxy.headersTooLong")) }
             searchFrom = max(0, buffer.count - delimiter.count + 1)
             guard let chunk = try await receiveChunk(maximumLength: 64 * 1024) else { throw ProxyError.closed }
             buffer.append(chunk)

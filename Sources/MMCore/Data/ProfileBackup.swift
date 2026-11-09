@@ -23,9 +23,9 @@ public enum ProfileBackup {
 
         public var errorDescription: String? {
             switch self {
-            case .running: "环境正在运行，请先关闭"
-            case .invalidFile(let why): "不是有效的环境备份文件：\(why)"
-            case .tool(let why): "压缩/解压失败：\(why)"
+            case .running: L("error.backup.running")
+            case .invalidFile(let why): L("error.backup.invalid \(why)")
+            case .tool(let why): L("error.backup.archive \(why)")
             }
         }
     }
@@ -68,19 +68,19 @@ public enum ProfileBackup {
         try ditto(["-x", "-k", file.path, work.path])
 
         let manifestURL = work.appendingPathComponent("profile.json")
-        guard let data = try? Data(contentsOf: manifestURL) else { throw BackupError.invalidFile("缺少 profile.json") }
+        guard let data = try? Data(contentsOf: manifestURL) else { throw BackupError.invalidFile(L("error.backup.noManifest")) }
         let manifest: Manifest
         do { manifest = try JSONDecoder().decode(Manifest.self, from: data) } catch {
             throw BackupError.invalidFile(error.localizedDescription)
         }
-        guard manifest.formatVersion <= formatVersion else { throw BackupError.invalidFile("文件来自更新版本的 mmBrowser") }
+        guard manifest.formatVersion <= formatVersion else { throw BackupError.invalidFile(L("error.backup.newerVersion")) }
 
         var warnings: [String] = []
         var p = manifest.profile
         p.id = UUID().uuidString.lowercased()
         p.deletedAt = nil
         if let proxy = p.proxy, let owner = try store.proxyOwner(of: proxy) {
-            warnings.append("代理 \(proxy.displayString) 已绑定在 #\(owner.seq)「\(owner.name)」上，导入的环境没有设置代理")
+            warnings.append(L("warning.backup.proxyBound \(proxy.displayString) \(owner.seq) \(owner.name)"))
             p.proxy = nil
             p.proxyExpiresAt = nil
         }

@@ -9,11 +9,11 @@ public enum StoreError: Error, LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .proxyAlreadyBound(let name, let seq):
-            "这个代理已经绑定在环境 #\(seq)「\(name)」上（一个代理只能对应一个环境）"
+            L("error.store.proxyBound \(seq) \(name)")
         case .notFound(let ref):
-            "找不到环境：\(ref)"
+            L("error.store.notFound \(ref)")
         case .ambiguous(let ref, let names):
-            "「\(ref)」匹配到多个环境：\(names.joined(separator: "、"))"
+            L("error.store.ambiguous \(ref) \(names.joined(separator: L("common.listSeparator")))")
         }
     }
 }
@@ -293,7 +293,7 @@ public final class Store: Sendable {
         guard let src = try profile(id: id) else { throw StoreError.notFound(id) }
         var p = src
         p.id = UUID().uuidString.lowercased()
-        p.name = name ?? "\(src.name) 副本"
+        p.name = name ?? L("profile.duplicateName \(src.name)")
         p.proxy = nil
         p.proxyExpiresAt = nil
         p.lastExit = nil

@@ -60,11 +60,11 @@ extension AppModel {
     func report(_ title: String, ok: Int, failed: [(String, String)], extra: [String] = []) {
         var lines = extra
         if !failed.isEmpty {
-            lines.append("失败 \(failed.count) 个：")
-            lines += failed.prefix(20).map { "· \($0.0)：\($0.1)" }
-            if failed.count > 20 { lines.append("…… 另有 \(failed.count - 20) 个") }
+            lines.append(L("report.failedHeader \(failed.count)"))
+            lines += failed.prefix(20).map { L("report.failedItem \($0.0) \($0.1)") }
+            if failed.count > 20 { lines.append(L("report.more \(failed.count - 20)")) }
         }
-        alert = AppAlert(title: "\(title)：成功 \(ok) 个" + (failed.isEmpty ? "" : "，失败 \(failed.count) 个"),
+        alert = AppAlert(title: failed.isEmpty ? L("report.title \(title) \(ok)") : L("report.titleWithFailures \(title) \(ok) \(failed.count)"),
                          message: lines.joined(separator: "\n"))
     }
 
@@ -87,9 +87,9 @@ extension AppModel {
         }
         do {
             let r = try store.insertMany(items)
-            report("批量新建", ok: r.inserted.count, failed: r.failed)
+            report(L("report.batchCreate"), ok: r.inserted.count, failed: r.failed)
         } catch {
-            alert = AppAlert(title: "批量新建失败", message: error.localizedDescription)
+            alert = AppAlert(title: L("alert.batchCreateFailed"), message: error.localizedDescription)
         }
     }
 
@@ -97,9 +97,9 @@ extension AppModel {
         guard let store else { return }
         do {
             let failed = try store.updateMany(ids) { edit.apply(to: &$0) }
-            if !failed.isEmpty { report("批量编辑", ok: ids.count - failed.count, failed: failed) }
+            if !failed.isEmpty { report(L("report.batchEdit"), ok: ids.count - failed.count, failed: failed) }
         } catch {
-            alert = AppAlert(title: "批量编辑失败", message: error.localizedDescription)
+            alert = AppAlert(title: L("alert.batchEditFailed"), message: error.localizedDescription)
         }
     }
 
@@ -108,7 +108,7 @@ extension AppModel {
         guard let store else { return }
         let ordered = ids.compactMap(fresh).sorted { $0.seq < $1.seq }
         guard ordered.count == proxies.count else {
-            alert = AppAlert(title: "数量不一致", message: "选中了 \(ordered.count) 个环境，但填了 \(proxies.count) 个代理。")
+            alert = AppAlert(title: L("alert.countMismatch"), message: L("alert.countMismatch.message \(ordered.count) \(proxies.count)"))
             return
         }
         // 先清掉这批环境原来的代理，避免"互换代理"时撞上唯一约束
@@ -124,18 +124,20 @@ extension AppModel {
                 }
                 failed += f
             }
-            report("分配代理", ok: ordered.count - failed.count, failed: failed)
+            report(L("report.assignProxies"), ok: ordered.count - failed.count, failed: failed)
         } catch {
-            alert = AppAlert(title: "分配代理失败", message: error.localizedDescription)
+            alert = AppAlert(title: L("alert.assignProxiesFailed"), message: error.localizedDescription)
         }
     }
 
-    func duplicate(_ id: String, copyData: Bool) {
-        guard let store else { return }
+    @discardableResult
+    func duplicate(_ id: String, copyData: Bool) -> Profile? {
+        guard let store else { return nil }
         do {
-            _ = try store.duplicate(id, copyData: copyData)
+            return try store.duplicate(id, copyData: copyData)
         } catch {
-            alert = AppAlert(title: "复制失败", message: error.localizedDescription)
+            alert = AppAlert(title: L("alert.duplicateFailed"), message: error.localizedDescription)
+            return nil
         }
     }
 
@@ -165,8 +167,10 @@ extension AppModel {
             let info = try await GeoCheck.check(upstream: upstream)
             try store.recordExit(info, for: id)
             lastError[id] = nil
+            checkFailed.remove(id)
         } catch {
-            lastError[id] = "检测失败：\(error.localizedDescription)"
+            lastError[id] = L("list.checkFailed \(error.localizedDescription)")
+            checkFailed.insert(id)
         }
     }
 
@@ -184,8 +188,8 @@ extension AppModel {
         guard !list.isEmpty else { return }
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.commaSeparatedText]
-        panel.nameFieldStringValue = "mmBrowser-环境-\(Date().formatted(.iso8601.year().month().day())).csv"
-        panel.message = "导出的文件包含代理密码，请妥善保管"
+        panel.nameFieldStringValue = L("export.csv.fileName \(Date().formatted(.iso8601.year().month().day()))")
+        panel.message = L("export.csv.message")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         let text = ProfileCSV.export(list)
         do {
@@ -193,7 +197,7 @@ extension AppModel {
             try (Data([0xEF, 0xBB, 0xBF]) + Data(text.utf8)).write(to: url)
             try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
         } catch {
-            alert = AppAlert(title: "导出失败", message: error.localizedDescription)
+            alert = AppAlert(title: L("alert.exportFailed"), message: error.localizedDescription)
         }
     }
 
@@ -207,7 +211,7 @@ extension AppModel {
             let text = String(data: data, encoding: .utf8) ?? String(decoding: data, as: UTF8.self)
             return try ProfileCSV.parseImport(text, defaultLanguage: defaultLanguage)
         } catch {
-            alert = AppAlert(title: "无法导入 CSV", message: error.localizedDescription)
+            alert = AppAlert(title: L("alert.csvImportFailed"), message: error.localizedDescription)
             return nil
         }
     }
@@ -222,17 +226,17 @@ extension AppModel {
                 try store.insert(p)
                 ok += 1
             } catch {
-                failed.append(("第 \(row.lineNumber) 行 \(p.name)", error.localizedDescription))
+                failed.append((L("report.csvLine \(row.lineNumber) \(p.name)"), error.localizedDescription))
             }
         }
-        report("导入 CSV", ok: ok, failed: failed)
+        report(L("report.importCSV"), ok: ok, failed: failed)
     }
 
     // MARK: - Cookie
 
     private func ensureStopped(_ id: String) -> Bool {
         if state(of: id).isActive {
-            alert = AppAlert(title: "请先关闭环境", message: "Cookie 和备份只能在环境关闭时读写。")
+            alert = AppAlert(title: L("alert.closeProfileFirst"), message: L("alert.closeProfileFirst.message"))
             return false
         }
         return true
@@ -245,12 +249,12 @@ extension AppModel {
             let panel = NSSavePanel()
             panel.allowedContentTypes = [.json]
             panel.nameFieldStringValue = "\(p.seq)-\(p.name)-cookies.json"
-            panel.message = "共 \(cookies.count) 条 Cookie。文件包含登录凭据，请妥善保管"
+            panel.message = L("export.cookies.message \(cookies.count)")
             guard panel.runModal() == .OK, let url = panel.url else { return }
             try ChromeCookies.exportJSON(cookies).write(to: url)
             try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
         } catch {
-            alert = AppAlert(title: "导出 Cookie 失败", message: error.localizedDescription)
+            alert = AppAlert(title: L("alert.exportCookiesFailed"), message: error.localizedDescription)
         }
     }
 
@@ -262,9 +266,10 @@ extension AppModel {
         do {
             let cookies = try ChromeCookies.importJSON(try Data(contentsOf: url))
             let n = try ChromeCookies.write(cookies, userDataDir: paths.profileDir(id), replaceAll: replaceAll)
-            alert = AppAlert(title: "已导入 \(n) 条 Cookie", message: replaceAll ? "原有 Cookie 已清空。" : "已与原有 Cookie 合并（同名覆盖）。")
+            alert = AppAlert(title: L("alert.cookiesImported \(n)"),
+                             message: replaceAll ? L("alert.cookiesImported.replaced") : L("alert.cookiesImported.merged"))
         } catch {
-            alert = AppAlert(title: "导入 Cookie 失败", message: error.localizedDescription)
+            alert = AppAlert(title: L("alert.importCookiesFailed"), message: error.localizedDescription)
         }
     }
 
@@ -278,8 +283,8 @@ extension AppModel {
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.canCreateDirectories = true
-        panel.prompt = "导出到这里"
-        panel.message = "每个环境导出为一个 .mmprofile 文件（包含代理密码、Cookie、保存的密码），请妥善保管"
+        panel.prompt = L("export.backup.prompt")
+        panel.message = L("export.backup.message")
         guard panel.runModal() == .OK, let dir = panel.url else { return }
         Task {
             var failed: [(String, String)] = []
@@ -292,7 +297,7 @@ extension AppModel {
                     failed.append(("#\(p.seq) \(p.name)", error.localizedDescription))
                 }
             }
-            report("导出备份", ok: list.count - failed.count, failed: failed, extra: ["位置：\(dir.path)"])
+            report(L("report.exportBackups"), ok: list.count - failed.count, failed: failed, extra: [L("report.location \(dir.path)")])
         }
     }
 
@@ -311,12 +316,12 @@ extension AppModel {
                 do {
                     let r = try ProfileBackup.import(from: url, store: store)
                     ok += 1
-                    notes += r.warnings.map { "#\(r.profile.seq) \(r.profile.name)：\($0)" }
+                    notes += r.warnings.map { L("report.warning \(r.profile.seq) \(r.profile.name) \($0)") }
                 } catch {
                     failed.append((url.lastPathComponent, error.localizedDescription))
                 }
             }
-            report("导入备份", ok: ok, failed: failed, extra: notes)
+            report(L("report.importBackups"), ok: ok, failed: failed, extra: notes)
         }
     }
 

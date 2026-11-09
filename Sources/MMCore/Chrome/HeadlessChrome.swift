@@ -72,8 +72,8 @@ final class HeadlessChrome: @unchecked Sendable {
             let deadline = Date().addingTimeInterval(timeout)
             var wsURL: URL?
             while wsURL == nil {
-                guard Date() < deadline else { throw ChromeError.startFailed("维护：等待调试端口超时") }
-                guard p.isRunning else { throw ChromeError.startFailed("维护：Chrome 提前退出") }
+                guard Date() < deadline else { throw ChromeError.startFailed(L("error.chrome.maintenance.portTimeout")) }
+                guard p.isRunning else { throw ChromeError.startFailed(L("error.chrome.maintenance.exited")) }
                 if let text = try? String(contentsOf: portFile, encoding: .utf8) {
                     let lines = text.split(separator: "\n").map(String.init)
                     if lines.count >= 2, let port = Int(lines[0]) {
@@ -101,12 +101,12 @@ final class HeadlessChrome: @unchecked Sendable {
     /// 打开一个内置页面（如 chrome://settings），等页面里的某个接口就绪，返回 CDP 会话 id。
     func openPage(_ url: String, readyCheck: String, timeout: TimeInterval = 15) async throws -> String {
         let target = try await cdp.send("Target.createTarget", ["url": url])
-        guard let targetId = target["targetId"].string else { throw ChromeError.startFailed("维护：无法打开 \(url)") }
+        guard let targetId = target["targetId"].string else { throw ChromeError.startFailed(L("error.chrome.maintenance.open \(url)")) }
         let attach = try await cdp.send("Target.attachToTarget", ["targetId": targetId, "flatten": true])
-        guard let sessionId = attach["sessionId"].string else { throw ChromeError.startFailed("维护：无法连接 \(url)") }
+        guard let sessionId = attach["sessionId"].string else { throw ChromeError.startFailed(L("error.chrome.maintenance.attach \(url)")) }
         let deadline = Date().addingTimeInterval(timeout)
         while (try? await cdp.evaluate(readyCheck, sessionId: sessionId))?.bool != true {
-            guard Date() < deadline else { throw ChromeError.startFailed("维护：\(url) 未就绪") }
+            guard Date() < deadline else { throw ChromeError.startFailed(L("error.chrome.maintenance.notReady \(url)")) }
             try await Task.sleep(for: .milliseconds(100))
         }
         return sessionId

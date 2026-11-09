@@ -23,7 +23,7 @@ struct Dialer: Sendable {
         case .proxy(let cfg):
             let endpoint = NWEndpoint.hostPort(host: .init(cfg.host), port: NWEndpoint.Port(rawValue: UInt16(cfg.port))!)
             let c = AsyncConnection(NWConnection(to: endpoint, using: .tcp), queue: queue)
-            try await c.start(timeout: connectTimeout, label: "上游代理 \(cfg.host):\(cfg.port)")
+            try await c.start(timeout: connectTimeout, label: L("proxy.upstream \(cfg.host) \(cfg.port)"))
             c.armDeadline(handshakeTimeout)
             do {
                 switch cfg.kind {
@@ -35,7 +35,7 @@ struct Dialer: Sendable {
             } catch {
                 let timedOut = c.deadlineFired
                 c.cancel()
-                if timedOut { throw ProxyError.timeout("与上游代理握手") }
+                if timedOut { throw ProxyError.timeout(L("proxy.handshake")) }
                 throw error
             }
         }
@@ -47,7 +47,7 @@ struct Dialer: Sendable {
         let methods: [UInt8] = cfg.hasCredentials ? [0x00, 0x02] : [0x00]
         try await c.send(Data([0x05, UInt8(methods.count)] + methods))
         let choice = try await c.readExactly(2)
-        guard choice[0] == 0x05 else { throw ProxyError.protocolError("上游不是 SOCKS5 代理") }
+        guard choice[0] == 0x05 else { throw ProxyError.protocolError(L("error.proxy.notSocks")) }
         switch choice[1] {
         case 0x00:
             break
@@ -63,14 +63,14 @@ struct Dialer: Sendable {
         case 0xFF:
             throw cfg.hasCredentials ? ProxyError.authFailed : ProxyError.authRequired
         default:
-            throw ProxyError.protocolError("上游选择了不支持的认证方式 \(choice[1])")
+            throw ProxyError.protocolError(L("error.proxy.authenticationMethod \(Int(choice[1]))"))
         }
 
         var req = Data([0x05, 0x01, 0x00])
         req.append(target.socksAddressBytes)
         try await c.send(req)
         let head = try await c.readExactly(4)
-        guard head[0] == 0x05 else { throw ProxyError.protocolError("CONNECT 应答版本错误") }
+        guard head[0] == 0x05 else { throw ProxyError.protocolError(L("error.proxy.replyVersion")) }
         guard head[1] == 0x00 else { throw ProxyError.upstreamRejected(head[1]) }
         _ = try await SocksTarget.read(atyp: head[3], from: c)  // 丢弃 BND.ADDR / BND.PORT
     }
@@ -91,7 +91,7 @@ struct Dialer: Sendable {
         let statusLine = text.components(separatedBy: "\r\n").first ?? ""
         let parts = statusLine.split(separator: " ", maxSplits: 2)
         guard parts.count >= 2, parts[0].hasPrefix("HTTP/"), let code = Int(parts[1]) else {
-            throw ProxyError.protocolError("上游不是 HTTP 代理：\(statusLine.prefix(80))")
+            throw ProxyError.protocolError(L("error.proxy.notHTTP \(String(statusLine.prefix(80)))"))
         }
         switch code {
         case 200..<300: return

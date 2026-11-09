@@ -1,0 +1,389 @@
+/* alert */
+"alert.assignProxiesFailed" = "Couldn’t Assign Proxies";
+"alert.batchCreateFailed" = "Batch Create Failed";
+"alert.batchEditFailed" = "Batch Edit Failed";
+"alert.cannotCheck" = "Can’t Check";
+"alert.cannotCheck.noProxy" = "This profile has no proxy configured.";
+"alert.cannotLaunch" = "Can’t Launch";
+"alert.checkFailed %lld %@" = "Check Failed for #%lld %@";
+"alert.chromeNotFound" = "Google Chrome not found";
+"alert.closeProfileFirst" = "Close the Profile First";
+"alert.closeProfileFirst.message" = "Cookies and backups can only be read or written while the profile is closed.";
+"alert.cookiesImported %lld" = "Cookies Imported: %lld";
+"alert.cookiesImported.merged" = "Merged with existing cookies (matching cookies were replaced).";
+"alert.cookiesImported.replaced" = "Existing cookies were cleared.";
+"alert.countMismatch" = "Counts Don’t Match";
+"alert.countMismatch.message %lld %lld" = "Selected profiles: %1$lld. Proxies entered: %2$lld.";
+"alert.csvImportFailed" = "Can’t Import CSV";
+"alert.dataDirectory %@ %@" = "Can’t open the data folder %1$@: %2$@";
+"alert.databaseError" = "Database Error";
+"alert.databaseNotOpen" = "Database is not open";
+"alert.deleteTagFailed" = "Couldn’t Delete Tag";
+"alert.duplicateFailed" = "Duplicate Failed";
+"alert.exportCookiesFailed" = "Couldn’t Export Cookies";
+"alert.exportFailed" = "Export Failed";
+"alert.importCookiesFailed" = "Couldn’t Import Cookies";
+"alert.launchFailed %@" = "%@ Failed to Launch";
+"alert.noProfileDirectory" = "Profile Folder Doesn’t Exist Yet";
+"alert.noProfileDirectory.message" = "It’s created the first time the profile is launched.";
+"alert.purgeFailed" = "Delete Failed";
+"alert.renameTagFailed" = "Couldn’t Rename Tag";
+"alert.restorePartial" = "Some Profiles Couldn’t Be Restored";
+"alert.runningLimit.message %lld" = "%lld profiles weren’t launched. Close some profiles or raise the limit in Settings.";
+"alert.runningLimit.title %lld" = "Running Limit Reached (%lld)";
+"alert.trashPartial" = "Some Profiles Weren’t Deleted";
+"alert.trashPartial.message" = "Close running profiles first.";
+
+/* assign */
+"assign.confirm" = "Assign";
+"assign.error.count %lld %lld" = "Selected profiles: %1$lld. Proxies entered: %2$lld.";
+"assign.footer" = "Replaces the current proxies of these profiles. Check the exits again after assigning.";
+"assign.header %lld" = "Assign proxies one by one, in number order, to the %lld selected profiles";
+"assign.preview" = "Preview";
+"assign.preview.noProxy" = "(No matching proxy)";
+"assign.preview.total %lld" = "…%lld in total";
+"assign.setExpiry" = "Also Set Expiration Date";
+
+/* batch */
+"batch.proxyList" = "Proxy List (One per Line)";
+"batch.proxyList.defaultKind" = "Default type";
+"batch.proxyList.formats" = "Supports socks5://user:pass@host:port, http://host:port, host:port:user:pass, and user:pass@host:port";
+"batch.proxyList.partial %lld %@" = "%1$lld recognized. Can’t parse line %2$@";
+"batch.proxyList.recognized %lld" = "%lld proxies recognized";
+
+/* batchCreate */
+"batchCreate.confirm %lld" = "Create %lld";
+"batchCreate.count %lld" = "Without proxies, create %lld profiles (assign proxies later)";
+"batchCreate.defaultPattern" = "Profile-{n}";
+"batchCreate.digits %lld" = "Digits: %lld";
+"batchCreate.error.pattern" = "Enter a name template.";
+"batchCreate.expiry" = "Proxy Expiration Date";
+"batchCreate.pattern" = "Name Template";
+"batchCreate.pattern.prompt" = "Use {n} for the number, e.g. ClientA-{n}";
+"batchCreate.preview %@" = "Preview: %@";
+"batchCreate.section.common" = "Shared Settings";
+"batchCreate.section.name" = "Name";
+"batchCreate.section.proxies" = "Proxies (One Profile per Proxy)";
+"batchCreate.startNumber %lld" = "Start at %lld";
+
+/* batchEdit */
+"batchEdit.addTags" = "Add Tags";
+"batchEdit.confirm %lld" = "Apply to %lld Profiles";
+"batchEdit.error.language %@" = "Invalid language code: %@";
+"batchEdit.extension.install" = "Install";
+"batchEdit.extension.keep" = "Keep";
+"batchEdit.extension.uninstall" = "Uninstall";
+"batchEdit.geolocation.block" = "Block";
+"batchEdit.header %lld" = "Changes %lld profiles. Only items that are turned on are changed.";
+"batchEdit.removeTags" = "Remove Tags";
+"batchEdit.section.environment" = "Profile Settings";
+"batchEdit.section.extensions" = "Extensions";
+"batchEdit.setGeolocation" = "Change Location Access";
+"batchEdit.setLanguage" = "Change Language";
+"batchEdit.setTimezone" = "Change Time Zone";
+"batchEdit.setWindow" = "Change Window Size";
+
+/* common */
+"common.assignProxies" = "Assign Proxies…";
+"common.auto" = "Auto";
+"common.bringToFront" = "Bring to Front";
+"common.cancel" = "Cancel";
+"common.close" = "Close";
+"common.copyProxyAddress" = "Copy Proxy Address";
+"common.direct" = "Direct";
+"common.ellipsis" = "…";
+"common.expiryDate" = "Expiration Date";
+"common.failed" = "Failed";
+"common.followExitIP.recommended" = "Match Exit IP (Recommended)";
+"common.geolocation" = "Location Access";
+"common.geolocation.ask" = "Ask";
+"common.language" = "Language";
+"common.listSeparator" = ", ";
+"common.notChecked" = "Not Checked";
+"common.notConfigured" = "Not Set";
+"common.optional" = "Optional";
+"common.profileCount %lld" = "%lld profiles";
+"common.save" = "Save";
+"common.showInFinder" = "Show in Finder";
+"common.timezone" = "Time Zone";
+"common.windowSize" = "Window Size";
+
+/* editor */
+"editor.create" = "Create";
+"editor.environment.current" = "For Current Exit";
+"editor.environment.footer" = "Set from the exit IP detected at each launch. The language also changes Chrome’s own interface language.";
+"editor.environment.header" = "Language and Time Zone";
+"editor.error.language %@" = "Invalid language code: %@ (for example, en-US or ja-JP)";
+"editor.error.passwordWithoutUsername" = "A password was entered without a username.";
+"editor.error.port" = "Invalid proxy port";
+"editor.error.proxyRequired" = "Enter a proxy (or choose Direct).";
+"editor.error.timezone %@" = "Invalid time zone: %@";
+"editor.error.window" = "Invalid custom window size (width at least 400, height at least 300)";
+"editor.extension %@" = "Extension: %@";
+"editor.extensions" = "Preinstalled Extensions";
+"editor.extensions.empty" = "The extension library is empty (Settings → Extension Library)";
+"editor.extraArgs" = "Extra Chrome Launch Arguments (One per Line)";
+"editor.geolocation.block.recommended" = "Block (Recommended)";
+"editor.id" = "ID";
+"editor.more" = "More Settings";
+"editor.more.extensions %lld" = "%lld extensions";
+"editor.more.extraArgs" = "Extra arguments";
+"editor.more.geolocation.ask" = "Location: Ask";
+"editor.more.geolocation.block" = "Location: Block";
+"editor.more.window %@" = "Window: %@";
+"editor.more.window.default" = "Window: Default";
+"editor.name" = "Name";
+"editor.name.prompt" = "Leave empty to name automatically, e.g. Profile-12";
+"editor.notes" = "Notes";
+"editor.profileFolder" = "Profile Folder";
+"editor.profileFolder.show" = "Show";
+"editor.proxy.check" = "Check Exit";
+"editor.proxy.checking" = "Checking…";
+"editor.proxy.directWarning" = "With a direct connection, the browser uses this Mac’s network and exits from your own IP.";
+"editor.proxy.expiry.toggle" = "Track Expiration Date (Remind Before It Expires)";
+"editor.proxy.field" = "Proxy";
+"editor.proxy.fields" = "Enter Details Manually";
+"editor.proxy.footer" = "Each proxy can be assigned to only one profile. If the proxy disconnects, the browser goes offline instead of falling back to a direct connection.";
+"editor.proxy.header" = "Proxy";
+"editor.proxy.host" = "Host";
+"editor.proxy.kind" = "Type";
+"editor.proxy.mode" = "Connection";
+"editor.proxy.mode.direct" = "Direct (No Proxy)";
+"editor.proxy.mode.proxy" = "Proxy";
+"editor.proxy.password" = "Password";
+"editor.proxy.port" = "Port";
+"editor.proxy.prompt" = "Paste socks5://user:pass@host:port, etc.";
+"editor.proxy.prompt.replace" = "Paste a new proxy to replace it";
+"editor.proxy.summary.noAuth" = "No Authentication";
+"editor.proxy.summary.noPassword" = "No Password";
+"editor.proxy.summary.password" = "Password Set";
+"editor.proxy.summary.username %@" = "User %@";
+"editor.proxy.username" = "Username";
+"editor.section.basic" = "General";
+"editor.tags" = "Tags";
+"editor.tags.placeholder" = "Optional. Press Return after typing";
+"editor.theme.auto" = "Automatic Toolbar Color";
+"editor.theme.color" = "Toolbar Color";
+"editor.window.custom" = "Custom";
+"editor.window.default" = "Default";
+"editor.window.height" = "Height";
+"editor.window.width" = "Width";
+
+/* expiry */
+"expiry.clear" = "Clear Expiration Date";
+"expiry.header %lld" = "Proxy Expiration Date for %lld Profiles";
+"expiry.inDays %lld" = "In %lld days";
+"expiry.overdue %lld" = "Expired %lld days ago";
+"expiry.today" = "Expires today";
+
+/* export */
+"export.backup.message" = "Each profile is exported as a .mmprofile file (including proxy passwords, cookies, and saved passwords). Keep them safe.";
+"export.backup.prompt" = "Export Here";
+"export.cookies.message %lld" = "Cookies: %lld. The file contains login credentials. Keep it safe.";
+"export.csv.fileName %@" = "mmBrowser-profiles-%@.csv";
+"export.csv.message" = "The exported file contains proxy passwords. Keep it safe.";
+
+/* language */
+"language.auto" = "Match Exit IP";
+"language.option %@ %@" = "%1$@ (%2$@)";
+
+/* launch */
+"launch.stage.checkingExit" = "Checking exit";
+"launch.stage.exitChecked" = "Exit OK";
+"launch.stage.initializing" = "First-time setup";
+"launch.stage.installingExtensions" = "Installing extensions";
+"launch.stage.preparing" = "Preparing";
+"launch.stage.seeding" = "Writing settings";
+"launch.stage.startingChrome" = "Starting Chrome";
+"launch.stage.startingProxy" = "Starting proxy";
+
+/* list */
+"list.checkFailed %@" = "Check failed: %@";
+"list.checkProxy" = "Check Proxy";
+"list.checkProxy.help" = "Check the proxy exit of the selected profiles";
+"list.close.help" = "Close the selected profiles";
+"list.column.exit" = "Exit";
+"list.column.languageTimezone" = "Language / Time Zone";
+"list.column.lastOpened" = "Last Opened";
+"list.column.name" = "Name";
+"list.column.notes" = "Notes";
+"list.column.proxy" = "Proxy";
+"list.column.status" = "Status";
+"list.column.tags" = "Tags";
+"list.edit" = "Edit";
+"list.empty.hint" = "Click + in the toolbar to create a profile";
+"list.empty.noMatch" = "No Matching Profiles";
+"list.empty.none" = "No Profiles Yet";
+"list.empty.trash" = "Trash Is Empty";
+"list.exit.checkedAt %@" = "Checked %@";
+"list.exit.shared %@" = "⚠️ Same exit IP as %@";
+"list.expiringBanner %lld %@" = "Proxies expired or expiring within 7 days (%1$lld): %2$@";
+"list.expiringBanner.show" = "View";
+"list.importCSV.confirm" = "Import";
+"list.importCSV.message %lld" = "Profiles with a proxy: %lld.\nRows whose proxy is already used by another profile will fail to import and will be listed afterward.";
+"list.importCSV.title %lld" = "Import %lld profiles?";
+"list.launch" = "Launch";
+"list.launch.help" = "Launch the selected profiles (running ones are brought to the front)";
+"list.menu.addTag" = "Add Tag";
+"list.menu.batchEdit" = "Batch Edit…";
+"list.menu.cookies" = "Cookies";
+"list.menu.cookies.export" = "Export…";
+"list.menu.cookies.importMerge" = "Import (Merge with Existing)…";
+"list.menu.cookies.importReplace" = "Import (Replace Existing)…";
+"list.menu.duplicate" = "Duplicate Profile";
+"list.menu.duplicate.settings" = "Settings Only";
+"list.menu.duplicate.withData" = "With Browser Data (Logins, Cookies, Passwords, Extensions)";
+"list.menu.edit" = "Edit…";
+"list.menu.exportBackups" = "Export Profile Backups…";
+"list.menu.exportCSV" = "Export as CSV…";
+"list.menu.moveToTrash" = "Move to Trash";
+"list.menu.newTag" = "New Tag…";
+"list.menu.purge" = "Delete Permanently…";
+"list.menu.removeTag" = "Remove Tag";
+"list.menu.revealInFinder" = "Show Profile Folder in Finder";
+"list.menu.setExpiry" = "Set Proxy Expiration Date…";
+"list.never" = "Never";
+"list.new.batch" = "Batch Create…";
+"list.new.exportCSV" = "Export Current List as CSV…";
+"list.new.help" = "New profile (⌘N). Click the arrow to batch create or import.";
+"list.new.importBackups" = "Import Profile Backups…";
+"list.new.importCSV" = "Import from CSV…";
+"list.new.profile" = "New Profile…";
+"list.purge.confirm" = "Delete Permanently";
+"list.purge.message" = "The profile folders are deleted too. Saved passwords, cookies, and browsing history can’t be recovered.";
+"list.purge.title %lld" = "Permanently delete %lld profiles?";
+"list.restore" = "Restore";
+"list.search" = "Search names, notes, IPs, tags…";
+"list.title.tag %@" = "Tag: %@";
+
+/* menu */
+"menu.newProfile" = "New Profile";
+
+/* menuBar */
+"menuBar.closeAll" = "Close All";
+"menuBar.noneRunning" = "No Running Profiles";
+"menuBar.openMainWindow" = "Open Main Window";
+"menuBar.quit" = "Quit mmBrowser";
+"menuBar.running %lld" = "Running (%lld)";
+"menuBar.settings" = "Settings…";
+"menuBar.suffix.launching" = " (Launching)";
+"menuBar.suffix.orphan" = " (Orphaned · Offline)";
+"menuBar.suffix.stopping" = " (Closing)";
+
+/* profile */
+"profile.defaultName %lld" = "Profile-%lld";
+"profile.placeholderName" = "Profile";
+
+/* proxies */
+"proxies.column.exit" = "Exit";
+"proxies.column.expiry" = "Expires";
+"proxies.column.lastChecked" = "Last Checked";
+"proxies.column.latency" = "Latency";
+"proxies.column.profile" = "Profile";
+"proxies.column.proxy" = "Proxy";
+"proxies.column.username" = "Username";
+"proxies.menu.check" = "Check";
+"proxies.menu.editProfile" = "Edit Profile…";
+"proxies.menu.setExpiry" = "Set Expiration Date…";
+"proxies.search" = "Search profiles, proxy hosts, IPs…";
+"proxies.subtitle.checking %lld" = "Checking %lld";
+"proxies.subtitle.expiring %lld" = "%lld expiring or expired";
+"proxies.title" = "Proxies";
+"proxies.toolbar.assign" = "Assign Proxies";
+"proxies.toolbar.assign.help" = "Assign a list of proxies to the selected profiles in order";
+"proxies.toolbar.checkAll" = "Check All";
+"proxies.toolbar.checkAll.help" = "Check all proxies (5 at a time)";
+"proxies.toolbar.checkSelected" = "Check Selected";
+"proxies.toolbar.checkSelected.help" = "Check the selected proxies";
+"proxies.toolbar.expiry" = "Expiration";
+"proxies.toolbar.expiry.help" = "Set the expiration date of the selected proxies";
+
+/* quit */
+"quit.confirm" = "Close Browsers and Quit";
+"quit.message" = "Quitting mmBrowser closes their local proxy endpoints, and the browsers will lose network access. Close these browsers and quit?";
+"quit.title %lld" = "%lld profiles are still running";
+
+/* report */
+"report.assignProxies" = "Assign Proxies";
+"report.batchCreate" = "Batch Create";
+"report.batchEdit" = "Batch Edit";
+"report.csvLine %lld %@" = "Line %1$lld %2$@";
+"report.exportBackups" = "Export Backups";
+"report.failedHeader %lld" = "Failed (%lld):";
+"report.failedItem %@ %@" = "· %1$@: %2$@";
+"report.importBackups" = "Import Backups";
+"report.importCSV" = "Import CSV";
+"report.location %@" = "Location: %@";
+"report.more %lld" = "…and %lld more";
+"report.title %@ %lld" = "%1$@: %2$lld Succeeded";
+"report.titleWithFailures %@ %lld %lld" = "%1$@: %2$lld Succeeded, %3$lld Failed";
+"report.warning %lld %@ %@" = "#%1$lld %2$@: %3$@";
+
+/* settings */
+"settings.checkPage" = "Check Page";
+"settings.checkPage.custom" = "Custom URL";
+"settings.checkPage.footer" = "Opened every time a profile launches to confirm the exit IP, location, and time zone. Applies to all profiles.";
+"settings.checkPage.header" = "Check Page Opened at Launch";
+"settings.checkPage.none" = "Don’t Open";
+"settings.checkPage.url" = "URL";
+"settings.chrome.choose" = "Choose…";
+"settings.chrome.executable" = "Executable";
+"settings.chrome.notFound" = "Not Found";
+"settings.chrome.reset" = "Reset to Default";
+"settings.chrome.version" = "Version";
+"settings.data.folder" = "Data Folder";
+"settings.data.note" = "Proxy passwords are stored in plain text in the database (readable only by you), and the website passwords and cookies saved in each profile are encrypted with a public key. Turn on FileVault.";
+"settings.defaultLanguage" = "Default Language for New Profiles";
+"settings.extensions.add" = "Add Extension";
+"settings.extensions.add.prompt" = "Paste a Chrome Web Store link or extension ID";
+"settings.extensions.addButton" = "Add";
+"settings.extensions.footer" = "After adding, check it in a profile’s editor or in Batch Edit to preinstall it in those profiles.";
+"settings.extensions.header" = "Extension Library";
+"settings.extensions.invalid" = "No valid extension ID found (32 letters from a to p)";
+"settings.extensions.pendingName" = "(Name available after install)";
+"settings.extensions.remove.help" = "Remove from the extension library (profiles that use it aren’t affected; uncheck it in each profile)";
+"settings.maxRunning %lld" = "Max Running Profiles: %lld";
+"settings.maxRunning.help" = "With 16 GB of memory, 10–12 at most is recommended";
+"settings.section.data" = "Data";
+"settings.section.profiles" = "Profiles";
+"settings.trashDays %lld" = "Keep in Trash: %lld days";
+"settings.trashDays.help" = "Profiles older than this (including browser data) are permanently deleted when the app starts";
+
+/* sidebar */
+"sidebar.all" = "All Profiles";
+"sidebar.deleteTag.confirm" = "Delete Tag";
+"sidebar.deleteTag.message %lld" = "This only removes the tag from %lld profiles. The profiles themselves aren’t deleted.";
+"sidebar.deleteTag.title %@" = "Delete Tag “%@”?";
+"sidebar.expiring.help %lld" = "%lld proxies expired or expiring within 7 days";
+"sidebar.proxies" = "Proxies";
+"sidebar.renameTag.field" = "Tag Name";
+"sidebar.renameTag.message" = "This tag is renamed on all profiles. If the new name already exists, the two tags are merged.";
+"sidebar.renameTag.title" = "Rename Tag";
+"sidebar.running" = "Running";
+"sidebar.section.profiles" = "Profiles";
+"sidebar.section.tags" = "Tags";
+"sidebar.tag.delete" = "Delete Tag…";
+"sidebar.tag.rename" = "Rename…";
+"sidebar.trash" = "Trash";
+"sidebar.untagged" = "Untagged";
+
+/* snapshot */
+"snapshot.batch.done %lld" = "done, %lld failed";
+"snapshot.error %@" = "error = %@";
+"snapshot.error.create" = "Failed to create profile";
+"snapshot.error.home" = "Snapshot mode requires MMBROWSER_HOME to point to a temporary folder";
+"snapshot.error.upstream" = "Failed to start upstream proxies";
+"snapshot.none" = "none";
+"snapshot.running %lld %lld %@" = "PID %1$lld, local endpoint 127.0.0.1:%2$lld, exit %3$@";
+"snapshot.timeout" = "timed out";
+
+/* status */
+"status.idle" = "Not Running";
+"status.orphan" = "Orphaned · Offline";
+"status.orphan.help %lld" = "PID %lld wasn’t launched by this session (the app may have quit unexpectedly). Its proxy endpoint is closed, so the browser has no network access. Close it and launch again.";
+"status.running" = "Running";
+"status.running.help %lld %lld %@" = "PID %1$lld · Local endpoint 127.0.0.1:%2$lld · Time zone %3$@";
+"status.stopping" = "Closing";
+
+/* tagField */
+"tagField.placeholder" = "Press Return or comma after typing";

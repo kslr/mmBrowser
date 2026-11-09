@@ -9,11 +9,11 @@ public enum ChromeError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .notInstalled(let path): "找不到 Google Chrome：\(path)"
-        case .noProxy: "这个环境没有配置代理，也没有允许直连，拒绝启动"
-        case .alreadyRunning(let pid): "这个环境已经在运行（PID \(pid)）"
-        case .noTimezone: "无法根据出口 IP 确定时区，请在环境里手动指定时区"
-        case .startFailed(let why): "Chrome 启动失败：\(why)"
+        case .notInstalled(let path): L("error.chrome.notInstalled \(path)")
+        case .noProxy: L("error.chrome.noProxy")
+        case .alreadyRunning(let pid): L("error.chrome.alreadyRunning \(Int(pid))")
+        case .noTimezone: L("error.chrome.noTimezone")
+        case .startFailed(let why): L("error.chrome.startFailed \(why)")
         }
     }
 }

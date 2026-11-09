@@ -6,8 +6,8 @@ import MMCore
 struct MMCtl: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "mmctl",
-        abstract: "mmBrowser 命令行（P1 测试入口）",
-        discussion: "数据目录默认 ~/Library/Application Support/mmBrowser，可用环境变量 MMBROWSER_HOME 覆盖。",
+        abstract: L("cli.abstract"),
+        discussion: L("cli.discussion"),
         subcommands: [Create.self, List.self, Show.self, Set_.self, Check.self, Launch.self, Plan.self,
                       Remove.self, Restore.self, Serve.self, ChromeInfo.self, Cookies.self]
     )
@@ -21,40 +21,40 @@ func openStore() throws -> Store {
 }
 
 struct ProfileOptions: ParsableArguments {
-    @Option(help: "代理，如 socks5://user:pass@host:port、http://host:port、host:port:user:pass")
+    @Option(help: ArgumentHelp(L("cli.profile.help.proxy")))
     var proxy: String?
-    @Option(help: "代理字符串没写类型时按什么处理：socks5 或 http")
+    @Option(help: ArgumentHelp(L("cli.profile.help.proxyType")))
     var proxyType: ProxyConfig.Kind = .socks5
-    @Flag(help: "允许直连（不走代理）")
+    @Flag(help: ArgumentHelp(L("cli.profile.help.direct")))
     var direct = false
-    @Option(help: "语言：auto（跟随出口 IP，默认）或 en-US、ja-JP、zh-CN 等")
+    @Option(help: ArgumentHelp(L("cli.profile.help.lang")))
     var lang: String?
-    @Option(help: "时区（IANA 名称，如 America/New_York）；auto 表示跟随出口 IP")
+    @Option(help: ArgumentHelp(L("cli.profile.help.tz")))
     var tz: String?
-    @Option(name: .customLong("url"), help: "启动页，可以重复（默认只在第一次打开环境时打开）")
+    @Option(name: .customLong("url"), help: ArgumentHelp(L("cli.profile.help.urls")))
     var urls: [String] = []
-    @Option(help: "每次启动都打开启动页：true 或 false")
+    @Option(help: ArgumentHelp(L("cli.profile.help.alwaysOpenUrls")))
     var alwaysOpenUrls: Bool?
-    @Option(name: .customLong("tag"), help: "标签，可以重复")
+    @Option(name: .customLong("tag"), help: ArgumentHelp(L("cli.profile.help.tags")))
     var tags: [String] = []
-    @Option(help: "备注")
+    @Option(help: ArgumentHelp(L("cli.profile.help.notes")))
     var notes: String?
-    @Option(help: "窗口尺寸，如 1440x900")
+    @Option(help: ArgumentHelp(L("cli.profile.help.window")))
     var window: String?
-    @Option(help: "工具栏主题色，如 #1A73E8")
+    @Option(help: ArgumentHelp(L("cli.profile.help.color")))
     var color: String?
-    @Option(help: "定位权限：block 或 ask")
+    @Option(help: ArgumentHelp(L("cli.profile.help.geo")))
     var geo: GeolocationPolicy?
-    @Option(name: .customLong("arg"), parsing: .unconditionalSingleValue, help: "额外的 Chrome 启动参数，可以重复")
+    @Option(name: .customLong("arg"), parsing: .unconditionalSingleValue, help: ArgumentHelp(L("cli.profile.help.extraArgs")))
     var extraArgs: [String] = []
-    @Option(name: .customLong("ext"), help: "预装扩展（应用商店 ID 或链接），可以重复；--ext none 表示清空")
+    @Option(name: .customLong("ext"), help: ArgumentHelp(L("cli.profile.help.extensions")))
     var extensions: [String] = []
 
     func apply(to p: inout Profile, store: Store) throws {
         if let proxy { p.proxy = try ProxyConfig.parse(proxy, defaultKind: proxyType); p.allowDirect = false }
         if direct { p.proxy = nil; p.allowDirect = true }
         if let lang {
-            guard LanguageTag.isValidSetting(lang) else { throw ValidationError("无效的语言代码：\(lang)（例如 auto、en-US、ja-JP）") }
+            guard LanguageTag.isValidSetting(lang) else { throw ValidationError(L("cli.error.language \(lang)")) }
             p.language = lang
         }
         if let alwaysOpenUrls { p.alwaysOpenStartURLs = alwaysOpenUrls }
@@ -62,7 +62,7 @@ struct ProfileOptions: ParsableArguments {
             if tz == "auto" {
                 p.timezone = nil
             } else {
-                guard TimeZone(identifier: tz) != nil else { throw ValidationError("无效的时区：\(tz)") }
+                guard TimeZone(identifier: tz) != nil else { throw ValidationError(L("cli.error.timezone \(tz)")) }
                 p.timezone = tz
             }
         }
@@ -71,12 +71,12 @@ struct ProfileOptions: ParsableArguments {
         if let notes { p.notes = notes }
         if let window {
             let parts = window.lowercased().split(separator: "x").compactMap { Int($0) }
-            guard parts.count == 2 else { throw ValidationError("窗口尺寸格式应为 宽x高，如 1440x900") }
+            guard parts.count == 2 else { throw ValidationError(L("cli.error.window")) }
             p.windowWidth = parts[0]; p.windowHeight = parts[1]
         }
         if let color {
             guard color.range(of: "^#[0-9A-Fa-f]{6}$", options: .regularExpression) != nil else {
-                throw ValidationError("颜色格式应为 #RRGGBB")
+                throw ValidationError(L("cli.error.color"))
             }
             p.themeColor = color.uppercased()
         }
@@ -86,7 +86,7 @@ struct ProfileOptions: ParsableArguments {
             p.extensionIds = []
         } else if !extensions.isEmpty {
             p.extensionIds = try extensions.map {
-                guard let id = ExtensionID.extract(from: $0) else { throw ValidationError("无效的扩展 ID：\($0)") }
+                guard let id = ExtensionID.extract(from: $0) else { throw ValidationError(L("cli.error.extension \($0)")) }
                 return id
             }
         }
@@ -98,30 +98,30 @@ extension GeolocationPolicy: ExpressibleByArgument {}
 
 func describe(_ p: Profile, running: Int32?) -> String {
     var lines = [
-        "#\(p.seq)  \(p.name)\(running.map { "  [运行中 PID \($0)]" } ?? "")",
-        "  id:        \(p.id)",
-        "  标签:      \(p.tags.isEmpty ? "-" : p.tags.joined(separator: ", "))",
-        "  代理:      \(p.proxy?.displayString ?? (p.allowDirect ? "直连（已允许）" : "未配置"))",
-        "  语言/时区:  \(p.language == LanguageTag.auto ? "自动（跟随出口 IP）" : p.language) / \(p.timezone ?? "自动（跟随出口 IP）")",
-        "  定位权限:   \(p.geolocation == .block ? "禁止" : "询问")",
-        "  窗口/颜色:  \(p.windowWidth.map { "\($0)x\(p.windowHeight ?? 0)" } ?? "默认") / \(p.effectiveThemeColor)",
-        "  启动页:    \(p.startURLs.isEmpty ? "-" : p.startURLs.joined(separator: "  "))\(p.alwaysOpenStartURLs ? "（每次启动都打开）" : "（仅首次打开）")",
+        "#\(p.seq)  \(p.name)\(running.map { L("cli.profile.runningPID \(Int($0))") } ?? "")",
+        L("cli.profile.id \(p.id)"),
+        L("cli.profile.tags \(p.tags.isEmpty ? "-" : p.tags.joined(separator: ", "))"),
+        L("cli.profile.proxy \(p.proxy?.displayString ?? (p.allowDirect ? L("common.directAllowed") : L("common.notConfigured")))"),
+        L("cli.profile.languageTimezone \(p.language == LanguageTag.auto ? L("common.autoExitIP") : p.language) \(p.timezone ?? L("common.autoExitIP"))"),
+        L("cli.profile.geolocation \(p.geolocation == .block ? L("common.block") : L("common.ask"))"),
+        L("cli.profile.windowColor \(p.windowWidth.map { "\($0)x\(p.windowHeight ?? 0)" } ?? L("common.default")) \(p.effectiveThemeColor)"),
+        L("cli.profile.startURLs \(p.startURLs.isEmpty ? "-" : p.startURLs.joined(separator: "  ")) \(p.alwaysOpenStartURLs ? L("cli.profile.everyLaunch") : L("cli.profile.firstLaunch"))"),
     ]
-    if !p.extraArgs.isEmpty { lines.append("  额外参数:   \(p.extraArgs.joined(separator: " "))") }
-    if !p.extensionIds.isEmpty { lines.append("  预装扩展:   \(p.extensionIds.joined(separator: " "))") }
-    if !p.notes.isEmpty { lines.append("  备注:      \(p.notes)") }
+    if !p.extraArgs.isEmpty { lines.append(L("cli.profile.extraArgs \(p.extraArgs.joined(separator: " "))")) }
+    if !p.extensionIds.isEmpty { lines.append(L("cli.profile.extensions \(p.extensionIds.joined(separator: " "))")) }
+    if !p.notes.isEmpty { lines.append(L("cli.profile.notes \(p.notes)")) }
     if let e = p.lastExit {
-        lines.append("  上次出口:   \(e.summary)  (\(e.provider), \(e.checkedAt.formatted(date: .numeric, time: .shortened)))")
+        lines.append(L("cli.profile.exit \(e.summary) \(e.provider) \(e.checkedAt.formatted(date: .numeric, time: .shortened))"))
     }
-    if let d = p.deletedAt { lines.append("  已删除于:   \(d.formatted())") }
+    if let d = p.deletedAt { lines.append(L("cli.profile.deletedAt \(d.formatted())")) }
     return lines.joined(separator: "\n")
 }
 
 // MARK: - 命令
 
 struct Create: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "新建环境")
-    @Option(help: "名称") var name: String
+    static let configuration = CommandConfiguration(abstract: L("cli.create.abstract"))
+    @Option(help: ArgumentHelp(L("cli.create.help.name"))) var name: String
     @OptionGroup var options: ProfileOptions
 
     func run() async throws {
@@ -129,7 +129,7 @@ struct Create: AsyncParsableCommand {
         var p = Profile(name: name)
         try options.apply(to: &p, store: store)
         if p.proxy == nil && !p.allowDirect {
-            throw ValidationError("请用 --proxy 指定代理，或者用 --direct 明确允许直连")
+            throw ValidationError(L("cli.create.error.proxyRequired"))
         }
         let saved = try store.insert(p)
         print(describe(saved, running: nil))
@@ -137,17 +137,17 @@ struct Create: AsyncParsableCommand {
 }
 
 struct List: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "列出环境")
-    @Flag(help: "只看回收站") var deleted = false
+    static let configuration = CommandConfiguration(abstract: L("cli.list.abstract"))
+    @Flag(help: ArgumentHelp(L("cli.list.help.deleted"))) var deleted = false
 
     func run() async throws {
         let store = try openStore()
         let launcher = try? BrowserLauncher(store: store, chrome: ChromeInstallation())
         let rows = try store.profiles(onlyDeleted: deleted)
-        if rows.isEmpty { print(deleted ? "回收站是空的" : "还没有环境，用 mmctl create 新建"); return }
+        if rows.isEmpty { print(deleted ? L("cli.list.emptyTrash") : L("cli.list.empty")); return }
         for p in rows {
-            let status = launcher?.runningPID(of: p.id).map { _ in "运行中" } ?? ""
-            let proxy = p.proxy?.displayString ?? (p.allowDirect ? "直连" : "未配置")
+            let status = launcher?.runningPID(of: p.id).map { _ in L("common.running") } ?? ""
+            let proxy = p.proxy?.displayString ?? (p.allowDirect ? L("common.direct") : L("common.notConfigured"))
             let exit = p.lastExit.map { "\($0.ip) \($0.countryCode ?? "")" } ?? ""
             print(String(format: "#%-4d %@", p.seq, "\(p.name)  \(p.tags.isEmpty ? "" : "[" + p.tags.joined(separator: ",") + "]  ")\(proxy)  \(exit)  \(p.language)  \(status)"))
         }
@@ -155,22 +155,22 @@ struct List: AsyncParsableCommand {
 }
 
 struct Show: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "查看环境详情")
-    @Argument(help: "环境：#序号、名称或 id 前缀") var ref: String
+    static let configuration = CommandConfiguration(abstract: L("cli.show.abstract"))
+    @Argument(help: ArgumentHelp(L("cli.help.profile"))) var ref: String
 
     func run() async throws {
         let store = try openStore()
         let p = try store.resolve(ref, includeDeleted: true)
         let pid = (try? BrowserLauncher(store: store, chrome: ChromeInstallation()))?.runningPID(of: p.id)
         print(describe(p, running: pid))
-        print("  目录:      \(store.paths.profileDir(p.id).path)")
+        print(L("cli.profile.directory \(store.paths.profileDir(p.id).path)"))
     }
 }
 
 struct Set_: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "set", abstract: "修改环境（只改给出的项，重启环境后生效）")
-    @Argument(help: "环境：#序号、名称或 id 前缀") var ref: String
-    @Option(help: "新名称") var name: String?
+    static let configuration = CommandConfiguration(commandName: "set", abstract: L("cli.set.abstract"))
+    @Argument(help: ArgumentHelp(L("cli.help.profile"))) var ref: String
+    @Option(help: ArgumentHelp(L("cli.set.help.name"))) var name: String?
     @OptionGroup var options: ProfileOptions
 
     func run() async throws {
@@ -184,10 +184,10 @@ struct Set_: AsyncParsableCommand {
 }
 
 struct Check: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "检测代理出口（IP、国家、时区、延迟）")
-    @Argument(help: "环境：#序号、名称或 id 前缀（不填则用 --proxy）") var ref: String?
-    @Option(help: "直接检测一个代理字符串") var proxy: String?
-    @Option(help: "代理字符串没写类型时按什么处理") var proxyType: ProxyConfig.Kind = .socks5
+    static let configuration = CommandConfiguration(abstract: L("cli.check.abstract"))
+    @Argument(help: ArgumentHelp(L("cli.check.help.profile"))) var ref: String?
+    @Option(help: ArgumentHelp(L("cli.check.help.proxy"))) var proxy: String?
+    @Option(help: ArgumentHelp(L("cli.help.proxyType"))) var proxyType: ProxyConfig.Kind = .socks5
 
     func run() async throws {
         let store = try openStore()
@@ -200,43 +200,43 @@ struct Check: AsyncParsableCommand {
             profile = p
             if let cfg = p.proxy { upstream = .proxy(cfg) } else if p.allowDirect { upstream = .direct } else { throw ChromeError.noProxy }
         } else {
-            throw ValidationError("请给出环境或 --proxy")
+            throw ValidationError(L("cli.check.error.profileRequired"))
         }
         let info = try await GeoCheck.check(upstream: upstream)
         if let profile { try store.recordExit(info, for: profile.id) }
-        print("出口 IP:  \(info.ip)")
-        print("位置:     \([info.countryCode, info.country, info.region, info.city].compactMap { $0 }.joined(separator: " / "))")
-        print("时区:     \(info.timezone ?? "-")")
-        print("运营商:   \(info.org ?? "-")")
-        print("耗时:     \(info.latencyMs ?? 0) ms（\(info.provider)）")
+        print(L("cli.check.ip \(info.ip)"))
+        print(L("cli.check.location \([info.countryCode, info.country, info.region, info.city].compactMap { $0 }.joined(separator: " / "))"))
+        print(L("cli.check.timezone \(info.timezone ?? "-")"))
+        print(L("cli.check.org \(info.org ?? "-")"))
+        print(L("cli.check.latency \(info.latencyMs ?? 0) \(info.provider)"))
         if let lang = CountryLocale.recommendedLanguage(for: info.countryCode) {
-            let current = profile.map { "，当前 \($0.language)" } ?? ""
-            print("推荐语言: \(lang)\(current)")
+            let current = profile.map { L("cli.check.currentLanguage \($0.language)") } ?? ""
+            print(L("cli.check.language \(lang) \(current)"))
         }
     }
 }
 
 struct Plan: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "打印启动命令（不启动）")
-    @Argument(help: "环境：#序号、名称或 id 前缀") var ref: String
+    static let configuration = CommandConfiguration(abstract: L("cli.plan.abstract"))
+    @Argument(help: ArgumentHelp(L("cli.help.profile"))) var ref: String
 
     func run() async throws {
         let store = try openStore()
         let p = try store.resolve(ref)
-        let tz = p.timezone ?? p.lastExit?.timezone ?? "<出口时区>"
+        let tz = p.timezone ?? p.lastExit?.timezone ?? L("cli.plan.exitTimezone")
         let lang = LanguageTag.resolve(p.language, countryCode: p.lastExit?.countryCode)
         var checkURL = store.checkPage.url
         if let url = checkURL, let open = SessionInspector.openTabURLs(userDataDir: store.paths.profileDir(p.id)),
            open.contains(where: { SessionInspector.sameSite($0, url) }) {
             checkURL = nil
-            print("（检测页在上次会话里还开着，这次不重复打开）")
+            print(L("cli.plan.checkPageOpen"))
         }
         let plan = LaunchPlan.make(profile: p, language: lang, userDataDir: store.paths.profileDir(p.id),
                                    localProxyPort: p.proxy == nil ? nil : 0, timezone: tz,
                                    checkPageURL: checkURL,
                                    openStartURLs: p.lastOpenedAt == nil || p.alwaysOpenStartURLs)
-        print("环境变量: TZ=\(tz)（本地入口端口在启动时分配，这里显示为 0）")
-        print("参数:\n  " + plan.arguments.joined(separator: "\n  "))
+        print(L("cli.plan.environment \(tz)"))
+        print(L("cli.plan.arguments") + plan.arguments.joined(separator: "\n  "))
     }
 }
 
@@ -256,27 +256,27 @@ final class SignalWatcher: @unchecked Sendable {
 
 struct Launch: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        abstract: "启动环境（前台运行：本地代理入口跟随本命令，Ctrl-C 会正常关闭浏览器）")
-    @Argument(help: "环境：#序号、名称或 id 前缀") var ref: String
-    @Flag(name: .shortAndLong, help: "打印每条隧道的建立和关闭") var verbose = false
+        abstract: L("cli.launch.abstract"))
+    @Argument(help: ArgumentHelp(L("cli.help.profile"))) var ref: String
+    @Flag(name: .shortAndLong, help: ArgumentHelp(L("cli.launch.help.verbose"))) var verbose = false
 
     func run() async throws {
         let store = try openStore()
         let chrome = try ChromeInstallation()
         let launcher = BrowserLauncher(store: store, chrome: chrome)
         let p = try store.resolve(ref)
-        print("启动 #\(p.seq) \(p.name)（Chrome \(chrome.version ?? "?")）")
+        print(L("cli.launch.starting \(p.seq) \(p.name) \(chrome.version ?? "?")"))
         let verbose = self.verbose
         let running = try await launcher.launch(profileId: p.id, progress: { stage in
             switch stage {
-            case .startingProxy: print("· 启动本地代理入口")
-            case .checkingExit: print("· 检测出口")
-            case .exitChecked(let e): print("  出口 \(e.summary)")
-            case .seeding: print("· 写入 Chrome 配置")
-            case .initializing: print("· 首次初始化（离线设置启动时恢复会话）")
-            case .installingExtensions: print("· 安装/启用扩展")
+            case .startingProxy: print(L("cli.launch.progress.proxy"))
+            case .checkingExit: print(L("cli.launch.progress.exit"))
+            case .exitChecked(let e): print(L("cli.launch.exit \(e.summary)"))
+            case .seeding: print(L("cli.launch.progress.seed"))
+            case .initializing: print(L("cli.launch.progress.initialize"))
+            case .installingExtensions: print(L("cli.launch.progress.extensions"))
             case .warning(let w): print("  ⚠️ \(w)")
-            case .startingChrome: print("· 启动 Chrome")
+            case .startingChrome: print(L("cli.launch.progress.chrome"))
             }
         }, proxyEvents: { event in
             switch event {
@@ -285,22 +285,22 @@ struct Launch: AsyncParsableCommand {
             case .tunnelClosed(let t, let up, let down): if verbose { print("  ← \(t.authority)  ↑\(up) ↓\(down)") }
             }
         })
-        print("已启动：PID \(running.pid)，本地入口 127.0.0.1:\(running.proxy?.port ?? 0)，时区 \(running.timezone)")
-        print("关闭浏览器（Cmd-Q）或在这里按 Ctrl-C 结束。")
+        print(L("cli.launch.started \(Int(running.pid)) \(Int(running.proxy?.port ?? 0)) \(running.timezone)"))
+        print(L("cli.launch.quitHint"))
         let watcher = SignalWatcher {
-            print("\n正在关闭浏览器…")
+            print(L("cli.launch.closing"))
             Task { await running.terminate() }
         }
         await running.waitUntilExit()
         _ = watcher
-        print("浏览器已退出，本地代理入口已关闭。")
+        print(L("cli.launch.exited"))
     }
 }
 
 struct Remove: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "rm", abstract: "删除环境（默认移入回收站）")
-    @Argument(help: "环境：#序号、名称或 id 前缀") var ref: String
-    @Flag(help: "彻底删除，包括环境目录（保存的密码、Cookie 都会删掉）") var purge = false
+    static let configuration = CommandConfiguration(commandName: "rm", abstract: L("cli.remove.abstract"))
+    @Argument(help: ArgumentHelp(L("cli.help.profile"))) var ref: String
+    @Flag(help: ArgumentHelp(L("cli.remove.help.purge"))) var purge = false
 
     func run() async throws {
         let store = try openStore()
@@ -310,39 +310,39 @@ struct Remove: AsyncParsableCommand {
         }
         if purge {
             try store.purge(p.id)
-            print("已彻底删除 #\(p.seq) \(p.name)")
+            print(L("cli.remove.purged \(p.seq) \(p.name)"))
         } else {
             try store.softDelete(p.id)
-            print("已移入回收站 #\(p.seq) \(p.name)（mmctl restore \(p.seq) 可恢复）")
+            print(L("cli.remove.trashed \(p.seq) \(p.name) \(p.seq)"))
         }
     }
 }
 
 struct Restore: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "从回收站恢复")
-    @Argument(help: "环境：#序号、名称或 id 前缀") var ref: String
+    static let configuration = CommandConfiguration(abstract: L("cli.restore.abstract"))
+    @Argument(help: ArgumentHelp(L("cli.help.profile"))) var ref: String
 
     func run() async throws {
         let store = try openStore()
         let p = try store.resolve(ref, includeDeleted: true)
         try store.restore(p.id)
-        print("已恢复 #\(p.seq) \(p.name)")
+        print(L("cli.restore.restored \(p.seq) \(p.name)"))
     }
 }
 
 struct Serve: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        abstract: "只运行一个本地 SOCKS5 入口（调试用，比如 curl --socks5-hostname 127.0.0.1:端口）")
-    @Option(help: "上游代理字符串") var proxy: String?
-    @Option(help: "代理字符串没写类型时按什么处理") var proxyType: ProxyConfig.Kind = .socks5
-    @Flag(help: "上游直连") var direct = false
+        abstract: L("cli.serve.abstract"))
+    @Option(help: ArgumentHelp(L("cli.serve.help.proxy"))) var proxy: String?
+    @Option(help: ArgumentHelp(L("cli.help.proxyType"))) var proxyType: ProxyConfig.Kind = .socks5
+    @Flag(help: ArgumentHelp(L("cli.serve.help.direct"))) var direct = false
 
     func run() async throws {
         setvbuf(stdout, nil, _IOLBF, 0)
         let upstream: Upstream
         if let proxy { upstream = .proxy(try ProxyConfig.parse(proxy, defaultKind: proxyType)) }
         else if direct { upstream = .direct }
-        else { throw ValidationError("请给出 --proxy 或 --direct") }
+        else { throw ValidationError(L("cli.serve.error.proxyRequired")) }
         let server = LocalProxyServer(upstream: upstream) { event in
             switch event {
             case .tunnelOpened(let t, let ms): print("→ \(t.authority)  \(ms)ms")
@@ -351,7 +351,7 @@ struct Serve: AsyncParsableCommand {
             }
         }
         let port = try await server.start()
-        print("本地入口：socks5://127.0.0.1:\(port)（Ctrl-C 结束）")
+        print(L("cli.serve.listening \(Int(port))"))
         let done = AsyncStream<Void> { cont in
             let w = SignalWatcher { cont.finish() }
             cont.onTermination = { _ in _ = w }
@@ -362,23 +362,23 @@ struct Serve: AsyncParsableCommand {
 }
 
 struct ChromeInfo: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "chrome", abstract: "显示本机 Chrome 信息")
+    static let configuration = CommandConfiguration(commandName: "chrome", abstract: L("cli.chrome.abstract"))
     func run() async throws {
         let c = try ChromeInstallation()
-        print("路径: \(c.executable.path)")
-        print("版本: \(c.version ?? "?")")
+        print(L("cli.chrome.path \(c.executable.path)"))
+        print(L("cli.chrome.version \(c.version ?? "?")"))
     }
 }
 
 struct Cookies: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        abstract: "导入导出 Cookie（环境必须关闭）",
+        abstract: L("cli.cookies.abstract"),
         subcommands: [Export.self, Import.self])
 
     struct Export: AsyncParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "导出为 JSON（不给文件则输出到终端）")
-        @Argument(help: "环境：#序号、名称或 id 前缀") var ref: String
-        @Argument(help: "输出文件") var file: String?
+        static let configuration = CommandConfiguration(abstract: L("cli.cookies.export.abstract"))
+        @Argument(help: ArgumentHelp(L("cli.help.profile"))) var ref: String
+        @Argument(help: ArgumentHelp(L("cli.cookies.export.help.file"))) var file: String?
 
         func run() async throws {
             let store = try openStore()
@@ -390,7 +390,7 @@ struct Cookies: AsyncParsableCommand {
             let data = try ChromeCookies.exportJSON(cookies)
             if let file {
                 try data.write(to: URL(fileURLWithPath: file))
-                print("已导出 \(cookies.count) 条 Cookie 到 \(file)")
+                print(L("cli.cookies.exported \(cookies.count) \(file)"))
             } else {
                 print(String(decoding: data, as: UTF8.self))
             }
@@ -398,10 +398,10 @@ struct Cookies: AsyncParsableCommand {
     }
 
     struct Import: AsyncParsableCommand {
-        static let configuration = CommandConfiguration(abstract: "从 JSON 导入")
-        @Argument(help: "环境：#序号、名称或 id 前缀") var ref: String
-        @Argument(help: "JSON 文件") var file: String
-        @Flag(help: "先清空原有 Cookie") var replace = false
+        static let configuration = CommandConfiguration(abstract: L("cli.cookies.import.abstract"))
+        @Argument(help: ArgumentHelp(L("cli.help.profile"))) var ref: String
+        @Argument(help: ArgumentHelp(L("cli.cookies.import.help.file"))) var file: String
+        @Flag(help: ArgumentHelp(L("cli.cookies.import.help.replace"))) var replace = false
 
         func run() async throws {
             let store = try openStore()
@@ -411,7 +411,7 @@ struct Cookies: AsyncParsableCommand {
             }
             let cookies = try ChromeCookies.importJSON(try Data(contentsOf: URL(fileURLWithPath: file)))
             let n = try ChromeCookies.write(cookies, userDataDir: store.paths.profileDir(p.id), replaceAll: replace)
-            print("已导入 \(n) 条 Cookie")
+            print(L("cli.cookies.imported \(n)"))
         }
     }
 }

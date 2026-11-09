@@ -8,6 +8,28 @@ public enum ProfileCSV {
 
         var title: String {
             switch self {
+            case .seq: L("csv.header.seq")
+            case .name: L("csv.header.name")
+            case .tags: L("csv.header.tags")
+            case .notes: L("csv.header.notes")
+            case .proxy: L("csv.header.proxy")
+            case .proxyExpires: L("csv.header.proxyExpires")
+            case .startURLs: L("csv.header.startURLs")
+            case .alwaysOpenStartURLs: L("csv.header.alwaysOpenStartURLs")
+            case .language: L("csv.header.language")
+            case .timezone: L("csv.header.timezone")
+            case .geolocation: L("csv.header.geolocation")
+            case .window: L("csv.header.window")
+            case .color: L("csv.header.color")
+            case .extraArgs: L("csv.header.extraArgs")
+            case .extensions: L("csv.header.extensions")
+            case .exitIP: L("csv.header.exitIP")
+            case .exitCountry: L("csv.header.exitCountry")
+            }
+        }
+
+        var chineseAlias: String {
+            switch self {
             case .seq: "序号"
             case .name: "名称"
             case .tags: "标签"
@@ -29,7 +51,7 @@ public enum ProfileCSV {
         }
 
         var aliases: [String] {
-            [title.lowercased(), rawValue.lowercased()] + {
+            [chineseAlias.lowercased(), rawValue.lowercased()] + {
                 switch self {
                 case .startURLs: ["start_urls", "urls", "url"]
                 case .proxyExpires: ["proxy_expires", "expires"]
@@ -73,10 +95,10 @@ public enum ProfileCSV {
                 case .proxy: p.proxy?.urlString ?? (p.allowDirect ? "direct" : "")
                 case .proxyExpires: p.proxyExpiresAt.map(formatDate) ?? ""
                 case .startURLs: p.startURLs.joined(separator: " ")
-                case .alwaysOpenStartURLs: p.alwaysOpenStartURLs ? "是" : ""
+                case .alwaysOpenStartURLs: p.alwaysOpenStartURLs ? L("csv.value.yes") : ""
                 case .language: p.language
                 case .timezone: p.timezone ?? "auto"
-                case .geolocation: p.geolocation == .block ? "禁止" : "询问"
+                case .geolocation: p.geolocation == .block ? L("csv.value.block") : L("csv.value.ask")
                 case .window: p.windowWidth.map { "\($0)x\(p.windowHeight ?? 0)" } ?? ""
                 case .color: p.themeColor ?? ""
                 case .extraArgs: p.extraArgs.joined(separator: " ")
@@ -103,7 +125,7 @@ public enum ProfileCSV {
         for (i, h) in header.enumerated() {
             if let c = Column.match(h), index[c] == nil { index[c] = i }
         }
-        guard index[.name] != nil else { throw ImportError.missingColumn("名称（name）") }
+        guard index[.name] != nil else { throw ImportError.missingColumn(L("csv.requiredName")) }
 
         var rows: [Row] = []
         for (r, cells) in table.dropFirst().enumerated() {
@@ -114,7 +136,7 @@ public enum ProfileCSV {
             }
             if cells.allSatisfy({ $0.trimmingCharacters(in: .whitespaces).isEmpty }) { continue }
             let name = v(.name)
-            guard !name.isEmpty else { throw ImportError.badLine(line, "名称为空") }
+            guard !name.isEmpty else { throw ImportError.badLine(line, L("error.csv.emptyName")) }
 
             var p = Profile(name: name, language: defaultLanguage)
             p.tags = v(.tags).split(whereSeparator: { $0 == "," || $0 == "，" || $0 == ";" })
@@ -130,7 +152,7 @@ public enum ProfileCSV {
                 }
             }
             if !v(.proxyExpires).isEmpty {
-                guard let d = parseDate(v(.proxyExpires)) else { throw ImportError.badLine(line, "代理到期日格式应为 2026-12-31") }
+                guard let d = parseDate(v(.proxyExpires)) else { throw ImportError.badLine(line, L("error.csv.proxyExpires")) }
                 p.proxyExpiresAt = d
             }
             p.startURLs = v(.startURLs).split(whereSeparator: { $0 == " " || $0 == "\n" || $0 == "|" })
@@ -140,28 +162,28 @@ public enum ProfileCSV {
 
             if !v(.language).isEmpty {
                 let lang = ["自动", "auto"].contains(v(.language).lowercased()) ? LanguageTag.auto : v(.language)
-                guard LanguageTag.isValidSetting(lang) else { throw ImportError.badLine(line, "语言代码无效：\(v(.language))") }
+                guard LanguageTag.isValidSetting(lang) else { throw ImportError.badLine(line, L("error.csv.language \(v(.language))")) }
                 p.language = lang
             }
             let tz = v(.timezone)
             if !tz.isEmpty, tz.lowercased() != "auto", tz != "自动" {
-                guard TimeZone(identifier: tz) != nil else { throw ImportError.badLine(line, "时区无效：\(tz)") }
+                guard TimeZone(identifier: tz) != nil else { throw ImportError.badLine(line, L("error.csv.timezone \(tz)")) }
                 p.timezone = tz
             }
             switch v(.geolocation).lowercased() {
             case "", "禁止", "block": p.geolocation = .block
             case "询问", "ask": p.geolocation = .ask
-            default: throw ImportError.badLine(line, "定位权限应为 禁止 或 询问")
+            default: throw ImportError.badLine(line, L("error.csv.geolocation"))
             }
             if !v(.window).isEmpty {
                 let wh = v(.window).lowercased().split(whereSeparator: { $0 == "x" || $0 == "*" || $0 == "×" }).compactMap { Int($0) }
-                guard wh.count == 2, wh[0] >= 400, wh[1] >= 300 else { throw ImportError.badLine(line, "窗口尺寸格式应为 1440x900") }
+                guard wh.count == 2, wh[0] >= 400, wh[1] >= 300 else { throw ImportError.badLine(line, L("error.csv.window")) }
                 p.windowWidth = wh[0]; p.windowHeight = wh[1]
             }
             let color = v(.color)
             if !color.isEmpty {
                 guard color.range(of: "^#[0-9A-Fa-f]{6}$", options: .regularExpression) != nil else {
-                    throw ImportError.badLine(line, "主题色格式应为 #RRGGBB")
+                    throw ImportError.badLine(line, L("error.csv.color"))
                 }
                 p.themeColor = color.uppercased()
             }

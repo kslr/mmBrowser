@@ -14,28 +14,28 @@ public enum ProxyError: Error, LocalizedError, Equatable {
 
     public var errorDescription: String? {
         switch self {
-        case .timeout(let what): "超时：\(what)"
-        case .connectFailed(let why): "连接失败：\(why)"
-        case .authRequired: "上游代理要求认证，但没有配置账号密码"
-        case .authFailed: "上游代理认证失败（账号或密码错误）"
-        case .upstreamRejected(let code): "上游代理拒绝连接（SOCKS5 应答码 \(code)：\(Self.socksReplyText(code))）"
-        case .httpStatus(let code, let line): "上游 HTTP 代理返回 \(code)：\(line)"
-        case .protocolError(let why): "协议错误：\(why)"
-        case .closed: "连接已关闭"
+        case .timeout(let what): L("error.proxy.timeout \(what)")
+        case .connectFailed(let why): L("error.proxy.connectFailed \(why)")
+        case .authRequired: L("error.proxy.authRequired")
+        case .authFailed: L("error.proxy.authFailed")
+        case .upstreamRejected(let code): L("error.proxy.rejected \(Int(code)) \(Self.socksReplyText(code))")
+        case .httpStatus(let code, let line): L("error.proxy.httpStatus \(Int(code)) \(line)")
+        case .protocolError(let why): L("error.proxy.protocol \(why)")
+        case .closed: L("error.proxy.closed")
         }
     }
 
     static func socksReplyText(_ code: UInt8) -> String {
         switch code {
-        case 1: "一般性失败"
-        case 2: "规则不允许"
-        case 3: "网络不可达"
-        case 4: "主机不可达"
-        case 5: "连接被拒绝"
-        case 6: "TTL 过期"
-        case 7: "不支持的命令"
-        case 8: "不支持的地址类型"
-        default: "未知"
+        case 1: L("error.proxy.reply.general")
+        case 2: L("error.proxy.reply.notAllowed")
+        case 3: L("error.proxy.reply.networkUnreachable")
+        case 4: L("error.proxy.reply.hostUnreachable")
+        case 5: L("error.proxy.reply.refused")
+        case 6: L("error.proxy.reply.ttlExpired")
+        case 7: L("error.proxy.reply.commandUnsupported")
+        case 8: L("error.proxy.reply.addressUnsupported")
+        default: L("error.proxy.reply.unknown")
         }
     }
 

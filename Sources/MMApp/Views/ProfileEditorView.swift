@@ -23,7 +23,7 @@ struct ProfileDraft {
     var timezoneAuto = true
     var timezone = TimeZone.current.identifier
     var geolocation = GeolocationPolicy.block
-    var windowPreset = "默认"
+    var windowPreset = Self.defaultWindowPreset
     var windowWidthText = ""
     var windowHeightText = ""
     var themeAuto = true
@@ -31,7 +31,18 @@ struct ProfileDraft {
     var extraArgsText = ""
     var extensionIds: [String] = []
 
-    static let windowPresets = ["默认", "1280x800", "1366x768", "1440x900", "1536x864", "1680x1050", "1920x1080", "自定义"]
+    static let defaultWindowPreset = "default"
+    static let customWindowPreset = "custom"
+    static let windowPresets = [defaultWindowPreset, "1280x800", "1366x768", "1440x900", "1536x864", "1680x1050", "1920x1080",
+                                customWindowPreset]
+
+    static func windowPresetLabel(_ preset: String) -> String {
+        switch preset {
+        case defaultWindowPreset: L("editor.window.default")
+        case customWindowPreset: L("editor.window.custom")
+        default: preset
+        }
+    }
 
     init(defaultLanguage: String, tags: [String] = []) {
         languageAuto = defaultLanguage == LanguageTag.auto
@@ -57,7 +68,7 @@ struct ProfileDraft {
         geolocation = p.geolocation
         if let w = p.windowWidth, let h = p.windowHeight {
             let key = "\(w)x\(h)"
-            windowPreset = Self.windowPresets.contains(key) ? key : "自定义"
+            windowPreset = Self.windowPresets.contains(key) ? key : Self.customWindowPreset
             windowWidthText = String(w)
             windowHeightText = String(h)
         }
@@ -92,9 +103,9 @@ struct ProfileDraft {
 
         switch proxyMode {
         case .proxy:
-            guard !host.trimmingCharacters(in: .whitespaces).isEmpty else { throw DraftError("请填写代理（或者选择直连）") }
-            guard let port = Int(portText), (1...65535).contains(port) else { throw DraftError("代理端口无效") }
-            guard username.isEmpty == false || password.isEmpty else { throw DraftError("填了密码但没有用户名") }
+            guard !host.trimmingCharacters(in: .whitespaces).isEmpty else { throw DraftError(L("editor.error.proxyRequired")) }
+            guard let port = Int(portText), (1...65535).contains(port) else { throw DraftError(L("editor.error.port")) }
+            guard username.isEmpty == false || password.isEmpty else { throw DraftError(L("editor.error.passwordWithoutUsername")) }
             p.proxy = ProxyConfig(kind: proxyKind, host: host.trimmingCharacters(in: .whitespaces), port: port,
                                   username: username, password: password)
             p.allowDirect = false
@@ -108,23 +119,23 @@ struct ProfileDraft {
         if languageAuto {
             p.language = LanguageTag.auto
         } else {
-            guard LanguageTag.isValid(language) else { throw DraftError("语言代码无效：\(language)（例如 en-US、ja-JP）") }
+            guard LanguageTag.isValid(language) else { throw DraftError(L("editor.error.language \(language)")) }
             p.language = language
         }
         if timezoneAuto {
             p.timezone = nil
         } else {
-            guard TimeZone(identifier: timezone) != nil else { throw DraftError("时区无效：\(timezone)") }
+            guard TimeZone(identifier: timezone) != nil else { throw DraftError(L("editor.error.timezone \(timezone)")) }
             p.timezone = timezone
         }
         p.geolocation = geolocation
 
         switch windowPreset {
-        case "默认":
+        case Self.defaultWindowPreset:
             p.windowWidth = nil; p.windowHeight = nil
-        case "自定义":
+        case Self.customWindowPreset:
             guard let w = Int(windowWidthText), let h = Int(windowHeightText), w >= 400, h >= 300 else {
-                throw DraftError("自定义窗口尺寸无效（宽至少 400，高至少 300）")
+                throw DraftError(L("editor.error.window"))
             }
             p.windowWidth = w; p.windowHeight = h
         default:
@@ -153,9 +164,9 @@ enum LanguageOptions {
     ]
 
     static func label(_ code: String) -> String {
-        if code == LanguageTag.auto { return "跟随出口 IP" }
+        if code == LanguageTag.auto { return L("language.auto") }
         let name = Locale.current.localizedString(forIdentifier: code) ?? code
-        return "\(name)（\(code)）"
+        return L("language.option \(name) \(code)")
     }
 }
 
@@ -198,8 +209,8 @@ struct ProfileEditorView: View {
                         .foregroundStyle(.red).lineLimit(2)
                 }
                 Spacer()
-                Button("取消") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button(isNew ? "创建" : "保存") { save() }
+                Button(L("common.cancel")) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(isNew ? L("editor.create") : L("common.save")) { save() }
                     .keyboardShortcut(.defaultAction)
             }
             .padding(12)
@@ -211,12 +222,12 @@ struct ProfileEditorView: View {
     // MARK: - 基本
 
     private var basicSection: some View {
-        Section("基本") {
-            TextField("名称", text: $draft.name, prompt: Text(isNew ? "留空自动命名，如 环境-12" : ""))
-            LabeledContent("标签") {
-                TagTokenField(tags: $draft.tags, suggestions: model.allTags, placeholder: "可选，输入后按回车")
+        Section(L("editor.section.basic")) {
+            TextField(L("editor.name"), text: $draft.name, prompt: Text(isNew ? L("editor.name.prompt") : ""))
+            LabeledContent(L("editor.tags")) {
+                TagTokenField(tags: $draft.tags, suggestions: model.allTags, placeholder: L("editor.tags.placeholder"))
             }
-            TextField("备注", text: $draft.notes, prompt: Text("可选"), axis: .vertical).lineLimit(1...3)
+            TextField(L("editor.notes"), text: $draft.notes, prompt: Text(L("common.optional")), axis: .vertical).lineLimit(1...3)
         }
     }
 
@@ -224,57 +235,57 @@ struct ProfileEditorView: View {
 
     private var proxySection: some View {
         Section {
-            Picker("连接方式", selection: $draft.proxyMode) {
-                Text("代理").tag(ProfileDraft.ProxyMode.proxy)
-                Text("直连（不走代理）").tag(ProfileDraft.ProxyMode.direct)
+            Picker(L("editor.proxy.mode"), selection: $draft.proxyMode) {
+                Text(L("editor.proxy.mode.proxy")).tag(ProfileDraft.ProxyMode.proxy)
+                Text(L("editor.proxy.mode.direct")).tag(ProfileDraft.ProxyMode.direct)
             }
             .pickerStyle(.segmented)
 
             if draft.proxyMode == .proxy {
-                TextField("代理", text: $proxyText,
-                          prompt: Text(draft.proxyConfig == nil ? "粘贴 socks5://user:pass@host:port 等" : "粘贴新的代理即可替换"))
+                TextField(L("editor.proxy.field"), text: $proxyText,
+                          prompt: Text(draft.proxyConfig == nil ? L("editor.proxy.prompt") : L("editor.proxy.prompt.replace")))
                     .onChange(of: proxyText) { parseProxyText() }
                 proxySummary
-                ExpandRow(title: "逐项填写", subtitle: nil, expanded: $showProxyFields)
+                ExpandRow(title: L("editor.proxy.fields"), subtitle: nil, expanded: $showProxyFields)
                 if showProxyFields {
-                    Picker("类型", selection: $draft.proxyKind) {
+                    Picker(L("editor.proxy.kind"), selection: $draft.proxyKind) {
                         Text("SOCKS5").tag(ProxyConfig.Kind.socks5)
                         Text("HTTP").tag(ProxyConfig.Kind.http)
                     }
                     .pickerStyle(.segmented)
-                    TextField("主机", text: $draft.host)
-                    TextField("端口", text: $draft.portText)
-                    TextField("用户名", text: $draft.username, prompt: Text("可选"))
+                    TextField(L("editor.proxy.host"), text: $draft.host)
+                    TextField(L("editor.proxy.port"), text: $draft.portText)
+                    TextField(L("editor.proxy.username"), text: $draft.username, prompt: Text(L("common.optional")))
                     HStack {
                         if showPassword {
-                            TextField("密码", text: $draft.password, prompt: Text("可选"))
+                            TextField(L("editor.proxy.password"), text: $draft.password, prompt: Text(L("common.optional")))
                         } else {
-                            SecureField("密码", text: $draft.password, prompt: Text("可选"))
+                            SecureField(L("editor.proxy.password"), text: $draft.password, prompt: Text(L("common.optional")))
                         }
                         Button { showPassword.toggle() } label: { Image(systemName: showPassword ? "eye.slash" : "eye") }
                             .buttonStyle(.borderless)
                     }
                 }
-                Toggle("记录到期日（到期前提醒）", isOn: $draft.expiryEnabled)
+                Toggle(L("editor.proxy.expiry.toggle"), isOn: $draft.expiryEnabled)
                 if draft.expiryEnabled {
-                    DatePicker("到期日", selection: $draft.expiry, displayedComponents: .date)
+                    DatePicker(L("common.expiryDate"), selection: $draft.expiry, displayedComponents: .date)
                 }
             } else {
-                Label("直连时浏览器使用本机网络，出口就是你自己的 IP。", systemImage: "exclamationmark.triangle.fill")
+                Label(L("editor.proxy.directWarning"), systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.orange)
             }
 
             HStack(alignment: .top) {
-                Button(checking ? "检测中…" : "检测出口") { check() }
+                Button(checking ? L("editor.proxy.checking") : L("editor.proxy.check")) { check() }
                     .disabled(checking || (draft.proxyMode == .proxy && draft.proxyConfig == nil))
                 if checking { ProgressView().controlSize(.small) }
                 Spacer()
                 checkResultView
             }
         } header: {
-            Text("代理")
+            Text(L("editor.proxy.header"))
         } footer: {
-            Text("一个代理只能绑定一个环境。代理断开时浏览器直接断网，不会回落到直连。")
+            Text(L("editor.proxy.footer"))
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -292,10 +303,10 @@ struct ProfileEditorView: View {
                     .background(.quaternary, in: RoundedRectangle(cornerRadius: 3))
                 Text(verbatim: "\(cfg.host):\(cfg.port)").textSelection(.enabled)
                 if let u = cfg.username {
-                    Text("账号 \(u)").foregroundStyle(.secondary)
-                    Text(cfg.password == nil ? "无密码" : "有密码").foregroundStyle(.secondary)
+                    Text(L("editor.proxy.summary.username \(u)")).foregroundStyle(.secondary)
+                    Text(cfg.password == nil ? L("editor.proxy.summary.noPassword") : L("editor.proxy.summary.password")).foregroundStyle(.secondary)
                 } else {
-                    Text("无认证").foregroundStyle(.secondary)
+                    Text(L("editor.proxy.summary.noAuth")).foregroundStyle(.secondary)
                 }
                 Spacer()
             }
@@ -327,38 +338,38 @@ struct ProfileEditorView: View {
 
     private var environmentSection: some View {
         Section {
-            Picker("语言", selection: Binding(
+            Picker(L("common.language"), selection: Binding(
                 get: { draft.languageAuto ? LanguageTag.auto : draft.language },
                 set: { v in
                     if v == LanguageTag.auto { draft.languageAuto = true } else { draft.languageAuto = false; draft.language = v }
                 })) {
-                Text("跟随出口 IP（推荐）").tag(LanguageTag.auto)
+                Text(L("common.followExitIP.recommended")).tag(LanguageTag.auto)
                 Divider()
                 if !draft.languageAuto, !LanguageOptions.codes.contains(draft.language) {
                     Text(draft.language).tag(draft.language)
                 }
                 ForEach(LanguageOptions.codes, id: \.self) { Text(LanguageOptions.label($0)).tag($0) }
             }
-            Picker("时区", selection: Binding(
+            Picker(L("common.timezone"), selection: Binding(
                 get: { draft.timezoneAuto ? "auto" : draft.timezone },
                 set: { v in
                     if v == "auto" { draft.timezoneAuto = true } else { draft.timezoneAuto = false; draft.timezone = v }
                 })) {
-                Text("跟随出口 IP（推荐）").tag("auto")
+                Text(L("common.followExitIP.recommended")).tag("auto")
                 Divider()
                 ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
             }
             if let e = lastExit, draft.languageAuto || draft.timezoneAuto {
                 let lang = draft.languageAuto ? LanguageTag.resolve(LanguageTag.auto, countryCode: e.countryCode) : draft.language
                 let tz = draft.timezoneAuto ? (e.timezone ?? "?") : draft.timezone
-                LabeledContent("按当前出口") {
-                    Text("\(LanguageOptions.label(lang)) · \(tz)").foregroundStyle(.secondary)
+                LabeledContent(L("editor.environment.current")) {
+                    Text(verbatim: "\(LanguageOptions.label(lang)) · \(tz)").foregroundStyle(.secondary)
                 }
             }
         } header: {
-            Text("语言和时区")
+            Text(L("editor.environment.header"))
         } footer: {
-            Text("每次启动都会按当时检测到的出口 IP 设置。语言也会影响 Chrome 自身界面的语言。")
+            Text(L("editor.environment.footer"))
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -367,30 +378,30 @@ struct ProfileEditorView: View {
 
     private var moreSection: some View {
         Section {
-            ExpandRow(title: "更多设置", subtitle: moreSummary, expanded: $showMore)
+            ExpandRow(title: L("editor.more"), subtitle: moreSummary, expanded: $showMore)
             if showMore {
-                Picker("定位权限", selection: $draft.geolocation) {
-                    Text("禁止（推荐）").tag(GeolocationPolicy.block)
-                    Text("询问").tag(GeolocationPolicy.ask)
+                Picker(L("common.geolocation"), selection: $draft.geolocation) {
+                    Text(L("editor.geolocation.block.recommended")).tag(GeolocationPolicy.block)
+                    Text(L("common.geolocation.ask")).tag(GeolocationPolicy.ask)
                 }
                 .pickerStyle(.segmented)
-                Picker("窗口尺寸", selection: $draft.windowPreset) {
-                    ForEach(ProfileDraft.windowPresets, id: \.self) { Text($0).tag($0) }
+                Picker(L("common.windowSize"), selection: $draft.windowPreset) {
+                    ForEach(ProfileDraft.windowPresets, id: \.self) { Text(ProfileDraft.windowPresetLabel($0)).tag($0) }
                 }
-                if draft.windowPreset == "自定义" {
+                if draft.windowPreset == ProfileDraft.customWindowPreset {
                     HStack {
-                        TextField("宽", text: $draft.windowWidthText)
+                        TextField(L("editor.window.width"), text: $draft.windowWidthText)
                         Text("×")
-                        TextField("高", text: $draft.windowHeightText)
+                        TextField(L("editor.window.height"), text: $draft.windowHeightText)
                     }
                 }
-                Toggle("工具栏自动配色", isOn: $draft.themeAuto)
+                Toggle(L("editor.theme.auto"), isOn: $draft.themeAuto)
                 if !draft.themeAuto {
-                    ColorPicker("工具栏颜色", selection: $draft.themeColor, supportsOpacity: false)
+                    ColorPicker(L("editor.theme.color"), selection: $draft.themeColor, supportsOpacity: false)
                 }
                 extensionRows
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("额外的 Chrome 启动参数（每行一个）")
+                    Text(L("editor.extraArgs"))
                     TextEditor(text: $draft.extraArgsText)
                         .font(.body.monospaced())
                         .frame(height: 40)
@@ -399,14 +410,14 @@ struct ProfileEditorView: View {
                         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 5))
                 }
                 if let p = original {
-                    LabeledContent("环境目录") {
+                    LabeledContent(L("editor.profileFolder")) {
                         HStack {
                             Text(model.paths.profileDir(p.id).path).font(.caption).foregroundStyle(.secondary)
                                 .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
-                            Button("显示") { model.revealInFinder(p.id) }.controlSize(.small)
+                            Button(L("editor.profileFolder.show")) { model.revealInFinder(p.id) }.controlSize(.small)
                         }
                     }
-                    LabeledContent("编号", value: "#\(p.seq) · \(p.id)").font(.caption)
+                    LabeledContent(L("editor.id"), value: "#\(p.seq) · \(p.id)").font(.caption)
                 }
             }
         }
@@ -414,10 +425,11 @@ struct ProfileEditorView: View {
 
     /// 折叠时显示的摘要，一眼看出有没有改过默认值。
     private var moreSummary: String {
-        var parts = [draft.geolocation == .block ? "定位禁止" : "定位询问",
-                     draft.windowPreset == "默认" ? "窗口默认" : "窗口 \(draft.windowPreset)"]
-        if !draft.extensionIds.isEmpty { parts.append("\(draft.extensionIds.count) 个扩展") }
-        if !draft.extraArgsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { parts.append("有额外参数") }
+        var parts = [draft.geolocation == .block ? L("editor.more.geolocation.block") : L("editor.more.geolocation.ask"),
+                     draft.windowPreset == ProfileDraft.defaultWindowPreset ? L("editor.more.window.default")
+                         : L("editor.more.window \(ProfileDraft.windowPresetLabel(draft.windowPreset))")]
+        if !draft.extensionIds.isEmpty { parts.append(L("editor.more.extensions \(draft.extensionIds.count)")) }
+        if !draft.extraArgsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { parts.append(L("editor.more.extraArgs")) }
         return parts.joined(separator: " · ")
     }
 
@@ -425,8 +437,8 @@ struct ProfileEditorView: View {
     private var extensionRows: some View {
         let lib = model.extensionLibrary
         if lib.isEmpty && draft.extensionIds.isEmpty {
-            LabeledContent("预装扩展") {
-                Text("扩展库是空的（设置 → 扩展库）").foregroundStyle(.secondary)
+            LabeledContent(L("editor.extensions")) {
+                Text(L("editor.extensions.empty")).foregroundStyle(.secondary)
             }
         }
         ForEach(lib) { e in
@@ -436,12 +448,12 @@ struct ProfileEditorView: View {
                     draft.extensionIds.removeAll { $0 == e.id }
                     if on { draft.extensionIds.append(e.id) }
                 })) {
-                Text("扩展：" + (e.name.isEmpty ? String(e.id.prefix(12)) + "…" : e.name)).help(e.id)
+                Text(L("editor.extension \(e.name.isEmpty ? String(e.id.prefix(12)) + "…" : e.name)")).help(e.id)
             }
         }
         ForEach(draft.extensionIds.filter { id in !lib.contains { $0.id == id } }, id: \.self) { id in
             Toggle(isOn: Binding(get: { true }, set: { if !$0 { draft.extensionIds.removeAll { $0 == id } } })) {
-                Text("扩展：" + String(id.prefix(12)) + "…").help(id)
+                Text(L("editor.extension \(String(id.prefix(12)) + "…")")).help(id)
             }
         }
     }

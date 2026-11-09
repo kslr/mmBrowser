@@ -11,10 +11,10 @@ public enum CheckPage: Codable, Hashable, Sendable {
 
         public var title: String {
             switch self {
-            case .browserscan: "BrowserScan（IP、位置、时区、指纹一致性）"
-            case .pixelscan: "Pixelscan（指纹一致性检测）"
-            case .ipinfo: "ipinfo.io（只看 IP 和位置）"
-            case .ipleak: "IPLeak（IP、DNS、WebRTC 泄漏）"
+            case .browserscan: L("checkPage.browserscan")
+            case .pixelscan: L("checkPage.pixelscan")
+            case .ipinfo: L("checkPage.ipinfo")
+            case .ipleak: L("checkPage.ipleak")
             }
         }
 

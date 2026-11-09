@@ -6,7 +6,7 @@ public enum GeoCheckError: Error, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .allProvidersFailed(let errors): "出口检测失败：\(errors.joined(separator: "；"))"
+        case .allProvidersFailed(let errors): L("error.geo.failed \(errors.joined(separator: L("common.errorSeparator")))")
         }
     }
 }

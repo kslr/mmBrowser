@@ -1,0 +1,389 @@
+/* alert */
+"alert.assignProxiesFailed" = "分配代理失败";
+"alert.batchCreateFailed" = "批量新建失败";
+"alert.batchEditFailed" = "批量编辑失败";
+"alert.cannotCheck" = "无法检测";
+"alert.cannotCheck.noProxy" = "这个环境没有配置代理";
+"alert.cannotLaunch" = "无法启动";
+"alert.checkFailed %lld %@" = "#%lld %@ 检测失败";
+"alert.chromeNotFound" = "没有找到 Google Chrome";
+"alert.closeProfileFirst" = "请先关闭环境";
+"alert.closeProfileFirst.message" = "Cookie 和备份只能在环境关闭时读写。";
+"alert.cookiesImported %lld" = "已导入 %lld 条 Cookie";
+"alert.cookiesImported.merged" = "已与原有 Cookie 合并（同名覆盖）。";
+"alert.cookiesImported.replaced" = "原有 Cookie 已清空。";
+"alert.countMismatch" = "数量不一致";
+"alert.countMismatch.message %lld %lld" = "选中了 %1$lld 个环境，但填了 %2$lld 个代理。";
+"alert.csvImportFailed" = "无法导入 CSV";
+"alert.dataDirectory %@ %@" = "无法打开数据目录 %1$@：%2$@";
+"alert.databaseError" = "数据库错误";
+"alert.databaseNotOpen" = "数据库未打开";
+"alert.deleteTagFailed" = "删除标签失败";
+"alert.duplicateFailed" = "复制失败";
+"alert.exportCookiesFailed" = "导出 Cookie 失败";
+"alert.exportFailed" = "导出失败";
+"alert.importCookiesFailed" = "导入 Cookie 失败";
+"alert.launchFailed %@" = "%@ 启动失败";
+"alert.noProfileDirectory" = "环境目录还不存在";
+"alert.noProfileDirectory.message" = "第一次启动后才会创建。";
+"alert.purgeFailed" = "删除失败";
+"alert.renameTagFailed" = "重命名标签失败";
+"alert.restorePartial" = "部分环境无法恢复";
+"alert.runningLimit.message %lld" = "还有 %lld 个环境没有启动。可以先关闭一些环境，或在设置里调高上限。";
+"alert.runningLimit.title %lld" = "已达到同时运行上限（%lld 个）";
+"alert.trashPartial" = "部分环境未删除";
+"alert.trashPartial.message" = "正在运行的环境需要先关闭。";
+
+/* assign */
+"assign.confirm" = "分配";
+"assign.error.count %lld %lld" = "选中了 %1$lld 个环境，但填了 %2$lld 个代理";
+"assign.footer" = "会替换这些环境原来的代理。分配后需要重新检测出口。";
+"assign.header %lld" = "按序号顺序，把代理逐个分配给选中的 %lld 个环境";
+"assign.preview" = "对应关系预览";
+"assign.preview.noProxy" = "（没有对应的代理）";
+"assign.preview.total %lld" = "…… 共 %lld 个";
+"assign.setExpiry" = "同时设置到期日";
+
+/* batch */
+"batch.proxyList" = "代理列表（每行一个）";
+"batch.proxyList.defaultKind" = "未写类型的按";
+"batch.proxyList.formats" = "支持 socks5://user:pass@host:port、http://host:port、host:port:user:pass、user:pass@host:port";
+"batch.proxyList.partial %lld %@" = "识别到 %1$lld 个，第 %2$@ 行无法识别";
+"batch.proxyList.recognized %lld" = "识别到 %lld 个代理";
+
+/* batchCreate */
+"batchCreate.confirm %lld" = "新建 %lld 个";
+"batchCreate.count %lld" = "不填代理时新建 %lld 个环境（之后再分配代理）";
+"batchCreate.defaultPattern" = "环境-{n}";
+"batchCreate.digits %lld" = "编号位数 %lld";
+"batchCreate.error.pattern" = "请填写名称模板";
+"batchCreate.expiry" = "代理到期日";
+"batchCreate.pattern" = "名称模板";
+"batchCreate.pattern.prompt" = "用 {n} 表示编号，例如 客户A-{n}";
+"batchCreate.preview %@" = "预览：%@";
+"batchCreate.section.common" = "共同设置";
+"batchCreate.section.name" = "名称";
+"batchCreate.section.proxies" = "代理（每个代理新建一个环境）";
+"batchCreate.startNumber %lld" = "起始编号 %lld";
+
+/* batchEdit */
+"batchEdit.addTags" = "添加标签";
+"batchEdit.confirm %lld" = "应用到 %lld 个环境";
+"batchEdit.error.language %@" = "语言代码无效：%@";
+"batchEdit.extension.install" = "安装";
+"batchEdit.extension.keep" = "不变";
+"batchEdit.extension.uninstall" = "卸载";
+"batchEdit.geolocation.block" = "禁止";
+"batchEdit.header %lld" = "将修改 %lld 个环境，只改打开了开关的项";
+"batchEdit.removeTags" = "移除标签";
+"batchEdit.section.environment" = "环境参数";
+"batchEdit.section.extensions" = "扩展";
+"batchEdit.setGeolocation" = "修改定位权限";
+"batchEdit.setLanguage" = "修改语言";
+"batchEdit.setTimezone" = "修改时区";
+"batchEdit.setWindow" = "修改窗口尺寸";
+
+/* common */
+"common.assignProxies" = "分配代理…";
+"common.auto" = "自动";
+"common.bringToFront" = "切到前台";
+"common.cancel" = "取消";
+"common.close" = "关闭";
+"common.copyProxyAddress" = "复制代理地址";
+"common.direct" = "直连";
+"common.ellipsis" = "……";
+"common.expiryDate" = "到期日";
+"common.failed" = "失败";
+"common.followExitIP.recommended" = "跟随出口 IP（推荐）";
+"common.geolocation" = "定位权限";
+"common.geolocation.ask" = "询问";
+"common.language" = "语言";
+"common.listSeparator" = "、";
+"common.notChecked" = "未检测";
+"common.notConfigured" = "未配置";
+"common.optional" = "可选";
+"common.profileCount %lld" = "%lld 个环境";
+"common.save" = "保存";
+"common.showInFinder" = "在 Finder 中显示";
+"common.timezone" = "时区";
+"common.windowSize" = "窗口尺寸";
+
+/* editor */
+"editor.create" = "创建";
+"editor.environment.current" = "按当前出口";
+"editor.environment.footer" = "每次启动都会按当时检测到的出口 IP 设置。语言也会影响 Chrome 自身界面的语言。";
+"editor.environment.header" = "语言和时区";
+"editor.error.language %@" = "语言代码无效：%@（例如 en-US、ja-JP）";
+"editor.error.passwordWithoutUsername" = "填了密码但没有用户名";
+"editor.error.port" = "代理端口无效";
+"editor.error.proxyRequired" = "请填写代理（或者选择直连）";
+"editor.error.timezone %@" = "时区无效：%@";
+"editor.error.window" = "自定义窗口尺寸无效（宽至少 400，高至少 300）";
+"editor.extension %@" = "扩展：%@";
+"editor.extensions" = "预装扩展";
+"editor.extensions.empty" = "扩展库是空的（设置 → 扩展库）";
+"editor.extraArgs" = "额外的 Chrome 启动参数（每行一个）";
+"editor.geolocation.block.recommended" = "禁止（推荐）";
+"editor.id" = "编号";
+"editor.more" = "更多设置";
+"editor.more.extensions %lld" = "%lld 个扩展";
+"editor.more.extraArgs" = "有额外参数";
+"editor.more.geolocation.ask" = "定位询问";
+"editor.more.geolocation.block" = "定位禁止";
+"editor.more.window %@" = "窗口 %@";
+"editor.more.window.default" = "窗口默认";
+"editor.name" = "名称";
+"editor.name.prompt" = "留空自动命名，如 环境-12";
+"editor.notes" = "备注";
+"editor.profileFolder" = "环境目录";
+"editor.profileFolder.show" = "显示";
+"editor.proxy.check" = "检测出口";
+"editor.proxy.checking" = "检测中…";
+"editor.proxy.directWarning" = "直连时浏览器使用本机网络，出口就是你自己的 IP。";
+"editor.proxy.expiry.toggle" = "记录到期日（到期前提醒）";
+"editor.proxy.field" = "代理";
+"editor.proxy.fields" = "逐项填写";
+"editor.proxy.footer" = "一个代理只能绑定一个环境。代理断开时浏览器直接断网，不会回落到直连。";
+"editor.proxy.header" = "代理";
+"editor.proxy.host" = "主机";
+"editor.proxy.kind" = "类型";
+"editor.proxy.mode" = "连接方式";
+"editor.proxy.mode.direct" = "直连（不走代理）";
+"editor.proxy.mode.proxy" = "代理";
+"editor.proxy.password" = "密码";
+"editor.proxy.port" = "端口";
+"editor.proxy.prompt" = "粘贴 socks5://user:pass@host:port 等";
+"editor.proxy.prompt.replace" = "粘贴新的代理即可替换";
+"editor.proxy.summary.noAuth" = "无认证";
+"editor.proxy.summary.noPassword" = "无密码";
+"editor.proxy.summary.password" = "有密码";
+"editor.proxy.summary.username %@" = "账号 %@";
+"editor.proxy.username" = "用户名";
+"editor.section.basic" = "基本";
+"editor.tags" = "标签";
+"editor.tags.placeholder" = "可选，输入后按回车";
+"editor.theme.auto" = "工具栏自动配色";
+"editor.theme.color" = "工具栏颜色";
+"editor.window.custom" = "自定义";
+"editor.window.default" = "默认";
+"editor.window.height" = "高";
+"editor.window.width" = "宽";
+
+/* expiry */
+"expiry.clear" = "清除到期日";
+"expiry.header %lld" = "设置 %lld 个环境的代理到期日";
+"expiry.inDays %lld" = "%lld 天后";
+"expiry.overdue %lld" = "已过期 %lld 天";
+"expiry.today" = "今天到期";
+
+/* export */
+"export.backup.message" = "每个环境导出为一个 .mmprofile 文件（包含代理密码、Cookie、保存的密码），请妥善保管";
+"export.backup.prompt" = "导出到这里";
+"export.cookies.message %lld" = "共 %lld 条 Cookie。文件包含登录凭据，请妥善保管";
+"export.csv.fileName %@" = "mmBrowser-环境-%@.csv";
+"export.csv.message" = "导出的文件包含代理密码，请妥善保管";
+
+/* language */
+"language.auto" = "跟随出口 IP";
+"language.option %@ %@" = "%1$@（%2$@）";
+
+/* launch */
+"launch.stage.checkingExit" = "检测出口";
+"launch.stage.exitChecked" = "出口正常";
+"launch.stage.initializing" = "首次初始化";
+"launch.stage.installingExtensions" = "安装扩展";
+"launch.stage.preparing" = "准备";
+"launch.stage.seeding" = "写入配置";
+"launch.stage.startingChrome" = "启动 Chrome";
+"launch.stage.startingProxy" = "启动代理入口";
+
+/* list */
+"list.checkFailed %@" = "检测失败：%@";
+"list.checkProxy" = "检测代理";
+"list.checkProxy.help" = "检测选中环境的代理出口";
+"list.close.help" = "关闭选中的环境";
+"list.column.exit" = "出口";
+"list.column.languageTimezone" = "语言 / 时区";
+"list.column.lastOpened" = "最后打开";
+"list.column.name" = "名称";
+"list.column.notes" = "备注";
+"list.column.proxy" = "代理";
+"list.column.status" = "状态";
+"list.column.tags" = "标签";
+"list.edit" = "编辑";
+"list.empty.hint" = "点工具栏的 + 新建环境";
+"list.empty.noMatch" = "没有匹配的环境";
+"list.empty.none" = "还没有环境";
+"list.empty.trash" = "回收站是空的";
+"list.exit.checkedAt %@" = "检测于 %@";
+"list.exit.shared %@" = "⚠️ 与 %@ 的出口 IP 相同";
+"list.expiringBanner %lld %@" = "%1$lld 个代理已到期或 7 天内到期：%2$@";
+"list.expiringBanner.show" = "查看";
+"list.importCSV.confirm" = "导入";
+"list.importCSV.message %lld" = "代理：%lld 个环境有代理。\n代理已被其它环境占用的行会导入失败，结束后会列出。";
+"list.importCSV.title %lld" = "导入 %lld 个环境？";
+"list.launch" = "启动";
+"list.launch.help" = "启动选中的环境（已运行的切到前台）";
+"list.menu.addTag" = "添加标签";
+"list.menu.batchEdit" = "批量编辑…";
+"list.menu.cookies" = "Cookie";
+"list.menu.cookies.export" = "导出…";
+"list.menu.cookies.importMerge" = "导入（与现有合并）…";
+"list.menu.cookies.importReplace" = "导入（先清空现有）…";
+"list.menu.duplicate" = "复制环境";
+"list.menu.duplicate.settings" = "只复制设置";
+"list.menu.duplicate.withData" = "连同浏览器数据（登录状态、Cookie、密码、扩展）";
+"list.menu.edit" = "编辑…";
+"list.menu.exportBackups" = "导出环境备份…";
+"list.menu.exportCSV" = "导出为 CSV…";
+"list.menu.moveToTrash" = "移到回收站";
+"list.menu.newTag" = "新标签…";
+"list.menu.purge" = "彻底删除…";
+"list.menu.removeTag" = "移除标签";
+"list.menu.revealInFinder" = "在 Finder 中显示环境目录";
+"list.menu.setExpiry" = "设置代理到期日…";
+"list.never" = "从未";
+"list.new.batch" = "批量新建…";
+"list.new.exportCSV" = "把当前列表导出为 CSV…";
+"list.new.help" = "新建环境（⌘N）；点箭头可批量新建、导入";
+"list.new.importBackups" = "导入环境备份…";
+"list.new.importCSV" = "从 CSV 导入…";
+"list.new.profile" = "新建环境…";
+"list.purge.confirm" = "彻底删除";
+"list.purge.message" = "环境目录会一起删除，里面保存的密码、Cookie、浏览记录都无法恢复。";
+"list.purge.title %lld" = "彻底删除 %lld 个环境？";
+"list.restore" = "恢复";
+"list.search" = "搜索名称、备注、IP、标签…";
+"list.title.tag %@" = "标签：%@";
+
+/* menu */
+"menu.newProfile" = "新建环境";
+
+/* menuBar */
+"menuBar.closeAll" = "全部关闭";
+"menuBar.noneRunning" = "没有运行中的环境";
+"menuBar.openMainWindow" = "打开主窗口";
+"menuBar.quit" = "退出 mmBrowser";
+"menuBar.running %lld" = "运行中（%lld）";
+"menuBar.settings" = "设置…";
+"menuBar.suffix.launching" = "（启动中）";
+"menuBar.suffix.orphan" = "（残留·已断网）";
+"menuBar.suffix.stopping" = "（正在关闭）";
+
+/* profile */
+"profile.defaultName %lld" = "环境-%lld";
+"profile.placeholderName" = "环境";
+
+/* proxies */
+"proxies.column.exit" = "出口";
+"proxies.column.expiry" = "到期";
+"proxies.column.lastChecked" = "上次检测";
+"proxies.column.latency" = "延迟";
+"proxies.column.profile" = "环境";
+"proxies.column.proxy" = "代理";
+"proxies.column.username" = "账号";
+"proxies.menu.check" = "检测";
+"proxies.menu.editProfile" = "编辑环境…";
+"proxies.menu.setExpiry" = "设置到期日…";
+"proxies.search" = "搜索环境、代理主机、IP…";
+"proxies.subtitle.checking %lld" = "正在检测 %lld 个";
+"proxies.subtitle.expiring %lld" = "%lld 个即将到期或已到期";
+"proxies.title" = "代理";
+"proxies.toolbar.assign" = "分配代理";
+"proxies.toolbar.assign.help" = "把一批代理按顺序分配给选中的环境";
+"proxies.toolbar.checkAll" = "检测全部";
+"proxies.toolbar.checkAll.help" = "检测全部代理（同时 5 个）";
+"proxies.toolbar.checkSelected" = "检测选中";
+"proxies.toolbar.checkSelected.help" = "检测选中的代理";
+"proxies.toolbar.expiry" = "到期日";
+"proxies.toolbar.expiry.help" = "设置选中代理的到期日";
+
+/* quit */
+"quit.confirm" = "关闭浏览器并退出";
+"quit.message" = "退出 mmBrowser 会关闭它们的本地代理入口，浏览器将无法联网。要先关闭这些浏览器再退出吗？";
+"quit.title %lld" = "还有 %lld 个环境在运行";
+
+/* report */
+"report.assignProxies" = "分配代理";
+"report.batchCreate" = "批量新建";
+"report.batchEdit" = "批量编辑";
+"report.csvLine %lld %@" = "第 %1$lld 行 %2$@";
+"report.exportBackups" = "导出备份";
+"report.failedHeader %lld" = "失败 %lld 个：";
+"report.failedItem %@ %@" = "· %1$@：%2$@";
+"report.importBackups" = "导入备份";
+"report.importCSV" = "导入 CSV";
+"report.location %@" = "位置：%@";
+"report.more %lld" = "…… 另有 %lld 个";
+"report.title %@ %lld" = "%1$@：成功 %2$lld 个";
+"report.titleWithFailures %@ %lld %lld" = "%1$@：成功 %2$lld 个，失败 %3$lld 个";
+"report.warning %lld %@ %@" = "#%1$lld %2$@：%3$@";
+
+/* settings */
+"settings.checkPage" = "检测页";
+"settings.checkPage.custom" = "自定义网址";
+"settings.checkPage.footer" = "每次启动环境都会打开它，用来确认出口 IP、位置和时区。对所有环境生效。";
+"settings.checkPage.header" = "启动时打开的检测页";
+"settings.checkPage.none" = "不打开";
+"settings.checkPage.url" = "网址";
+"settings.chrome.choose" = "选择…";
+"settings.chrome.executable" = "可执行文件";
+"settings.chrome.notFound" = "未找到";
+"settings.chrome.reset" = "恢复默认";
+"settings.chrome.version" = "版本";
+"settings.data.folder" = "数据目录";
+"settings.data.note" = "代理密码以明文保存在数据库里（文件权限仅本人可读），各环境保存的网站密码和 Cookie 也用公开密钥加密。请开启 FileVault。";
+"settings.defaultLanguage" = "新环境默认语言";
+"settings.extensions.add" = "添加扩展";
+"settings.extensions.add.prompt" = "粘贴 Chrome 应用商店链接或扩展 ID";
+"settings.extensions.addButton" = "添加";
+"settings.extensions.footer" = "添加后在环境的编辑表单或批量编辑里勾选，即可预装到对应环境。";
+"settings.extensions.header" = "扩展库";
+"settings.extensions.invalid" = "没有找到有效的扩展 ID（32 个 a–p 的字母）";
+"settings.extensions.pendingName" = "（名称待安装后获取）";
+"settings.extensions.remove.help" = "从扩展库移除（已勾选它的环境不受影响，可以在环境里取消勾选）";
+"settings.maxRunning %lld" = "同时运行上限：%lld 个";
+"settings.maxRunning.help" = "16GB 内存建议不超过 10–12 个";
+"settings.section.data" = "数据";
+"settings.section.profiles" = "环境";
+"settings.trashDays %lld" = "回收站保留：%lld 天";
+"settings.trashDays.help" = "超过天数的环境（连同浏览器数据）会在应用启动时彻底删除";
+
+/* sidebar */
+"sidebar.all" = "全部环境";
+"sidebar.deleteTag.confirm" = "删除标签";
+"sidebar.deleteTag.message %lld" = "只是从 %lld 个环境上去掉这个标签，环境本身不会删除。";
+"sidebar.deleteTag.title %@" = "删除标签「%@」？";
+"sidebar.expiring.help %lld" = "%lld 个代理已到期或 7 天内到期";
+"sidebar.proxies" = "代理";
+"sidebar.renameTag.field" = "标签名称";
+"sidebar.renameTag.message" = "所有环境上的这个标签都会改名；如果新名称已经存在，两者会合并。";
+"sidebar.renameTag.title" = "重命名标签";
+"sidebar.running" = "运行中";
+"sidebar.section.profiles" = "环境";
+"sidebar.section.tags" = "标签";
+"sidebar.tag.delete" = "删除标签…";
+"sidebar.tag.rename" = "重命名…";
+"sidebar.trash" = "回收站";
+"sidebar.untagged" = "无标签";
+
+/* snapshot */
+"snapshot.batch.done %lld" = "完成，失败 %lld 项";
+"snapshot.error %@" = "错误 = %@";
+"snapshot.error.create" = "创建环境失败";
+"snapshot.error.home" = "截图模式需要设置 MMBROWSER_HOME 指向临时目录";
+"snapshot.error.upstream" = "上游启动失败";
+"snapshot.none" = "无";
+"snapshot.running %lld %lld %@" = "PID %1$lld，本地入口 127.0.0.1:%2$lld，出口 %3$@";
+"snapshot.timeout" = "超时";
+
+/* status */
+"status.idle" = "未运行";
+"status.orphan" = "残留·已断网";
+"status.orphan.help %lld" = "PID %lld 不是本次启动的（可能是应用上次异常退出），它的代理入口已关闭，浏览器无法联网。关闭后重新启动即可。";
+"status.running" = "运行中";
+"status.running.help %lld %lld %@" = "PID %1$lld · 本地入口 127.0.0.1:%2$lld · 时区 %3$@";
+"status.stopping" = "正在关闭";
+
+/* tagField */
+"tagField.placeholder" = "输入后按回车或逗号";

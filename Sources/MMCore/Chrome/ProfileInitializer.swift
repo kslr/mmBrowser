@@ -39,7 +39,7 @@ public enum ProfileInitializer {
         let back = try await headless.evaluate(
             "new Promise(r => chrome.settingsPrivate.getPref('\(name)', p => r(p.value)))", sessionId: sessionId)
         guard ok.bool == true, back.int == value else {
-            throw ChromeError.startFailed("初始化：设置 \(name) 失败")
+            throw ChromeError.startFailed(L("error.chrome.initialize \(name)"))
         }
     }
 }

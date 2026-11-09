@@ -44,7 +44,7 @@ struct SheetButtons: View {
                 Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red).lineLimit(3)
             }
             Spacer()
-            Button("取消") { dismiss() }.keyboardShortcut(.cancelAction)
+            Button(L("common.cancel")) { dismiss() }.keyboardShortcut(.cancelAction)
             Button(confirmTitle, action: onConfirm).keyboardShortcut(.defaultAction).disabled(confirmDisabled)
         }
         .padding(12)
@@ -60,9 +60,9 @@ struct ProxyTextArea: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("代理列表（每行一个）").fixedSize()
+                Text(L("batch.proxyList")).fixedSize()
                 Spacer()
-                Text("未写类型的按").foregroundStyle(.secondary).fixedSize()
+                Text(L("batch.proxyList.defaultKind")).foregroundStyle(.secondary).fixedSize()
                 Picker("", selection: $kind) {
                     Text("SOCKS5").tag(ProxyConfig.Kind.socks5)
                     Text("HTTP").tag(ProxyConfig.Kind.http)
@@ -78,11 +78,12 @@ struct ProxyTextArea: View {
                 .background(.background.secondary, in: RoundedRectangle(cornerRadius: 5))
             let bad = lines.filter { if case .failure = $0.result { true } else { false } }
             if !lines.isEmpty {
-                Text(bad.isEmpty ? "识别到 \(lines.count) 个代理"
-                     : "识别到 \(lines.count - bad.count) 个，第 \(bad.map { String($0.lineNumber) }.joined(separator: "、")) 行无法识别")
+                let badLines = bad.map { String($0.lineNumber) }.joined(separator: L("common.listSeparator"))
+                Text(bad.isEmpty ? L("batch.proxyList.recognized \(lines.count)")
+                     : L("batch.proxyList.partial \(lines.count - bad.count) \(badLines)"))
                     .font(.caption).foregroundStyle(bad.isEmpty ? Color.secondary : Color.red)
             }
-            Text("支持 socks5://user:pass@host:port、http://host:port、host:port:user:pass、user:pass@host:port")
+            Text(L("batch.proxyList.formats"))
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -95,7 +96,7 @@ struct BatchCreateView: View {
     @Environment(\.dismiss) private var dismiss
     let tag: String?
 
-    @State private var namePattern = "环境-{n}"
+    @State private var namePattern = L("batchCreate.defaultPattern")
     @State private var startNumber = 1
     @State private var digits = 2
     @State private var count = 5
@@ -113,43 +114,43 @@ struct BatchCreateView: View {
     var body: some View {
         VStack(spacing: 0) {
             Form {
-                Section("名称") {
-                    TextField("名称模板", text: $namePattern, prompt: Text("用 {n} 表示编号，例如 客户A-{n}"))
+                Section(L("batchCreate.section.name")) {
+                    TextField(L("batchCreate.pattern"), text: $namePattern, prompt: Text(L("batchCreate.pattern.prompt")))
                     HStack {
-                        Stepper("起始编号 \(startNumber)", value: $startNumber, in: 0...99_999)
+                        Stepper(L("batchCreate.startNumber \(startNumber)"), value: $startNumber, in: 0...99_999)
                         Spacer()
-                        Stepper("编号位数 \(digits)", value: $digits, in: 1...6)
+                        Stepper(L("batchCreate.digits \(digits)"), value: $digits, in: 1...6)
                     }
-                    Text("预览：" + previewNames).font(.caption).foregroundStyle(.secondary)
+                    Text(L("batchCreate.preview \(previewNames)")).font(.caption).foregroundStyle(.secondary)
                 }
                 Section {
                     ProxyTextArea(text: $proxyText, kind: $proxyKind, lines: lines)
                     if proxyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Stepper("不填代理时新建 \(count) 个环境（之后再分配代理）", value: $count, in: 1...500)
+                        Stepper(L("batchCreate.count \(count)"), value: $count, in: 1...500)
                     }
-                    Toggle("代理到期日", isOn: $expiryEnabled)
-                    if expiryEnabled { DatePicker("到期日", selection: $expiry, displayedComponents: .date) }
+                    Toggle(L("batchCreate.expiry"), isOn: $expiryEnabled)
+                    if expiryEnabled { DatePicker(L("common.expiryDate"), selection: $expiry, displayedComponents: .date) }
                 } header: {
-                    Text("代理（每个代理新建一个环境）")
+                    Text(L("batchCreate.section.proxies"))
                 }
-                Section("共同设置") {
-                    LabeledContent("标签") {
-                        TagTokenField(tags: $draft.tags, suggestions: model.allTags, placeholder: "可选，输入后按回车")
+                Section(L("batchCreate.section.common")) {
+                    LabeledContent(L("editor.tags")) {
+                        TagTokenField(tags: $draft.tags, suggestions: model.allTags, placeholder: L("editor.tags.placeholder"))
                     }
                     LanguagePicker(language: $language)
-                    Picker("时区", selection: Binding(
+                    Picker(L("common.timezone"), selection: Binding(
                         get: { draft.timezoneAuto ? "auto" : draft.timezone },
                         set: { v in if v == "auto" { draft.timezoneAuto = true } else { draft.timezoneAuto = false; draft.timezone = v } })) {
-                        Text("跟随出口 IP（推荐）").tag("auto")
+                        Text(L("common.followExitIP.recommended")).tag("auto")
                         Divider()
                         ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
                     }
-                    TextField("备注", text: $draft.notes, prompt: Text("可选"))
+                    TextField(L("editor.notes"), text: $draft.notes, prompt: Text(L("common.optional")))
                 }
             }
             .formStyle(.grouped)
             Divider()
-            SheetButtons(error: error, confirmTitle: "新建 \(total) 个", confirmDisabled: total == 0, onConfirm: create)
+            SheetButtons(error: error, confirmTitle: L("batchCreate.confirm \(total)"), confirmDisabled: total == 0, onConfirm: create)
         }
         .frame(width: 600, height: 700)
         .onAppear {
@@ -163,17 +164,17 @@ struct BatchCreateView: View {
             let num = String(format: "%0\(digits)d", startNumber + i)
             return namePattern.contains("{n}") ? namePattern.replacingOccurrences(of: "{n}", with: num) : namePattern + num
         }
-        return names.joined(separator: "、") + (total > 3 ? "……" : "")
+        return names.joined(separator: L("common.listSeparator")) + (total > 3 ? L("common.ellipsis") : "")
     }
 
     private func create() {
         do {
             let proxies = proxyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 ? [] : try ProxyList.parseStrict(proxyText, defaultKind: proxyKind)
-            guard !namePattern.trimmingCharacters(in: .whitespaces).isEmpty else { throw DraftError("请填写名称模板") }
-            var template = Profile(name: "模板")
+            guard !namePattern.trimmingCharacters(in: .whitespaces).isEmpty else { throw DraftError(L("batchCreate.error.pattern")) }
+            var template = Profile(name: "template")
             var d = draft
-            d.name = "模板"
+            d.name = "template"
             d.proxyMode = .proxy
             d.host = "placeholder"; d.portText = "1"   // 代理之后逐个替换
             try d.apply(to: &template)
@@ -191,11 +192,11 @@ struct BatchCreateView: View {
 
 /// 语言选择：跟随出口 IP（auto）或常用语言。
 struct LanguagePicker: View {
-    var title = "语言"
+    var title = L("common.language")
     @Binding var language: String
     var body: some View {
         Picker(title, selection: $language) {
-            Text("跟随出口 IP（推荐）").tag(LanguageTag.auto)
+            Text(L("common.followExitIP.recommended")).tag(LanguageTag.auto)
             Divider()
             if language != LanguageTag.auto, !LanguageOptions.codes.contains(language) {
                 Text(language).tag(language)
@@ -217,7 +218,7 @@ struct BatchEditView: View {
     @State private var removeTags: [String] = []
     @State private var tzAuto = true
     @State private var tz = TimeZone.current.identifier
-    @State private var windowPreset = "默认"
+    @State private var windowPreset = ProfileDraft.defaultWindowPreset
     @State private var addExt = Set<String>()
     @State private var removeExt = Set<String>()
     @State private var error: String?
@@ -226,43 +227,45 @@ struct BatchEditView: View {
         VStack(spacing: 0) {
             Form {
                 Section {
-                    LabeledContent("添加标签") {
-                        TagTokenField(tags: $addTags, suggestions: model.allTags, placeholder: "可选")
+                    LabeledContent(L("batchEdit.addTags")) {
+                        TagTokenField(tags: $addTags, suggestions: model.allTags, placeholder: L("common.optional"))
                     }
-                    LabeledContent("移除标签") {
-                        TagTokenField(tags: $removeTags, suggestions: model.allTags, placeholder: "可选")
+                    LabeledContent(L("batchEdit.removeTags")) {
+                        TagTokenField(tags: $removeTags, suggestions: model.allTags, placeholder: L("common.optional"))
                     }
-                } header: { Text("将修改 \(ids.count) 个环境，只改打开了开关的项") }
+                } header: { Text(L("batchEdit.header \(ids.count)")) }
 
-                Section("环境参数") {
-                    Toggle("修改语言", isOn: $edit.setLanguage)
+                Section(L("batchEdit.section.environment")) {
+                    Toggle(L("batchEdit.setLanguage"), isOn: $edit.setLanguage)
                     if edit.setLanguage { LanguagePicker(language: $edit.language) }
-                    Toggle("修改时区", isOn: $edit.setTimezone)
+                    Toggle(L("batchEdit.setTimezone"), isOn: $edit.setTimezone)
                     if edit.setTimezone {
-                        Toggle("跟随出口 IP", isOn: $tzAuto)
+                        Toggle(L("language.auto"), isOn: $tzAuto)
                         if !tzAuto {
-                            Picker("时区", selection: $tz) {
+                            Picker(L("common.timezone"), selection: $tz) {
                                 ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
                             }
                         }
                     }
-                    Toggle("修改定位权限", isOn: $edit.setGeolocation)
+                    Toggle(L("batchEdit.setGeolocation"), isOn: $edit.setGeolocation)
                     if edit.setGeolocation {
-                        Picker("定位权限", selection: $edit.geolocation) {
-                            Text("禁止").tag(GeolocationPolicy.block)
-                            Text("询问").tag(GeolocationPolicy.ask)
+                        Picker(L("common.geolocation"), selection: $edit.geolocation) {
+                            Text(L("batchEdit.geolocation.block")).tag(GeolocationPolicy.block)
+                            Text(L("common.geolocation.ask")).tag(GeolocationPolicy.ask)
                         }.pickerStyle(.segmented)
                     }
-                    Toggle("修改窗口尺寸", isOn: $edit.setWindow)
+                    Toggle(L("batchEdit.setWindow"), isOn: $edit.setWindow)
                     if edit.setWindow {
-                        Picker("窗口尺寸", selection: $windowPreset) {
-                            ForEach(ProfileDraft.windowPresets.filter { $0 != "自定义" }, id: \.self) { Text($0).tag($0) }
+                        Picker(L("common.windowSize"), selection: $windowPreset) {
+                            ForEach(ProfileDraft.windowPresets.filter { $0 != ProfileDraft.customWindowPreset }, id: \.self) {
+                                Text(ProfileDraft.windowPresetLabel($0)).tag($0)
+                            }
                         }
                     }
                 }
 
                 if !model.extensionLibrary.isEmpty {
-                    Section("扩展") {
+                    Section(L("batchEdit.section.extensions")) {
                         ForEach(model.extensionLibrary) { e in
                             HStack {
                                 Text(e.name.isEmpty ? String(e.id.prefix(12)) + "…" : e.name)
@@ -275,7 +278,9 @@ struct BatchEditView: View {
                                         addExt.remove(e.id); removeExt.remove(e.id)
                                         if v == 1 { addExt.insert(e.id) } else if v == 2 { removeExt.insert(e.id) }
                                     })) {
-                                    Text("不变").tag(0); Text("安装").tag(1); Text("卸载").tag(2)
+                                    Text(L("batchEdit.extension.keep")).tag(0)
+                                    Text(L("batchEdit.extension.install")).tag(1)
+                                    Text(L("batchEdit.extension.uninstall")).tag(2)
                                 }
                                 .pickerStyle(.segmented).labelsHidden().frame(width: 180)
                             }
@@ -285,7 +290,7 @@ struct BatchEditView: View {
             }
             .formStyle(.grouped)
             Divider()
-            SheetButtons(error: error, confirmTitle: "应用到 \(ids.count) 个环境", onConfirm: apply)
+            SheetButtons(error: error, confirmTitle: L("batchEdit.confirm \(ids.count)"), onConfirm: apply)
         }
         .frame(width: 560, height: 620)
         .onAppear { edit.language = LanguageTag.auto }
@@ -295,7 +300,7 @@ struct BatchEditView: View {
         var e = edit
         e.addTags = addTags
         e.removeTags = removeTags
-        if e.setLanguage, !LanguageTag.isValidSetting(e.language) { error = "语言代码无效：\(e.language)"; return }
+        if e.setLanguage, !LanguageTag.isValidSetting(e.language) { error = L("batchEdit.error.language \(e.language)"); return }
         if e.setTimezone { e.timezone = tzAuto ? nil : tz }
         if e.setWindow {
             let wh = windowPreset.split(separator: "x").compactMap { Int($0) }
@@ -329,29 +334,29 @@ struct AssignProxiesView: View {
             Form {
                 Section {
                     ProxyTextArea(text: $text, kind: $kind, lines: lines)
-                    Toggle("同时设置到期日", isOn: $expiryEnabled)
-                    if expiryEnabled { DatePicker("到期日", selection: $expiry, displayedComponents: .date) }
+                    Toggle(L("assign.setExpiry"), isOn: $expiryEnabled)
+                    if expiryEnabled { DatePicker(L("common.expiryDate"), selection: $expiry, displayedComponents: .date) }
                 } header: {
-                    Text("按序号顺序，把代理逐个分配给选中的 \(targets.count) 个环境")
+                    Text(L("assign.header \(targets.count)"))
                 } footer: {
-                    Text("会替换这些环境原来的代理。分配后需要重新检测出口。").font(.caption).foregroundStyle(.secondary)
+                    Text(L("assign.footer")).font(.caption).foregroundStyle(.secondary)
                 }
-                Section("对应关系预览") {
+                Section(L("assign.preview")) {
                     ForEach(Array(targets.prefix(12).enumerated()), id: \.offset) { i, p in
                         LabeledContent("#\(p.seq) \(p.name)") {
                             if i < lines.count, case .success(let c) = lines[i].result {
                                 Text(verbatim: c.displayString).foregroundStyle(.secondary)
                             } else {
-                                Text("（没有对应的代理）").foregroundStyle(.red)
+                                Text(L("assign.preview.noProxy")).foregroundStyle(.red)
                             }
                         }
                     }
-                    if targets.count > 12 { Text("…… 共 \(targets.count) 个").foregroundStyle(.secondary) }
+                    if targets.count > 12 { Text(L("assign.preview.total \(targets.count)")).foregroundStyle(.secondary) }
                 }
             }
             .formStyle(.grouped)
             Divider()
-            SheetButtons(error: error, confirmTitle: "分配", confirmDisabled: lines.isEmpty, onConfirm: assign)
+            SheetButtons(error: error, confirmTitle: L("assign.confirm"), confirmDisabled: lines.isEmpty, onConfirm: assign)
         }
         .frame(width: 600, height: 640)
     }
@@ -360,7 +365,7 @@ struct AssignProxiesView: View {
         do {
             let proxies = try ProxyList.parseStrict(text, defaultKind: kind)
             guard proxies.count == targets.count else {
-                throw DraftError("选中了 \(targets.count) 个环境，但填了 \(proxies.count) 个代理")
+                throw DraftError(L("assign.error.count \(targets.count) \(proxies.count)"))
             }
             model.assignProxies(ids, proxies: proxies, expiry: expiryEnabled ? expiry : nil)
             dismiss()
@@ -382,14 +387,14 @@ struct ExpiryView: View {
     var body: some View {
         VStack(spacing: 0) {
             Form {
-                Section("设置 \(ids.count) 个环境的代理到期日") {
-                    Toggle("清除到期日", isOn: $clear)
-                    if !clear { DatePicker("到期日", selection: $date, displayedComponents: .date) }
+                Section(L("expiry.header \(ids.count)")) {
+                    Toggle(L("expiry.clear"), isOn: $clear)
+                    if !clear { DatePicker(L("common.expiryDate"), selection: $date, displayedComponents: .date) }
                 }
             }
             .formStyle(.grouped)
             Divider()
-            SheetButtons(error: nil, confirmTitle: "保存") {
+            SheetButtons(error: nil, confirmTitle: L("common.save")) {
                 var e = BatchEdit()
                 e.setExpiry = true
                 e.expiry = clear ? nil : date

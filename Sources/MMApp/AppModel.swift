@@ -51,6 +51,8 @@ final class AppModel {
     private(set) var trash: [Profile] = []
     private(set) var states: [String: RunState] = [:]
     var lastError: [String: String] = [:]
+    /// 最近一次批量检测失败的环境（代理视图里显示为失败）
+    var checkFailed: Set<String> = []
     /// 启动时遇到的非致命问题（如扩展没装好），显示在状态列的提示里
     var lastWarning: [String: String] = [:]
     var checking: Set<String> = []
@@ -68,7 +70,7 @@ final class AppModel {
             self.store = store
             startObserving(store)
         } catch {
-            setupError = "无法打开数据目录 \(paths.root.path)：\(error.localizedDescription)"
+            setupError = L("alert.dataDirectory \(paths.root.path) \(error.localizedDescription)")
         }
         reloadChrome()
         purgeOldTrash()
@@ -111,7 +113,7 @@ final class AppModel {
         let url = path.map { URL(fileURLWithPath: $0) } ?? ChromeInstallation.defaultExecutable
         do {
             launcher = BrowserLauncher(store: store, chrome: try ChromeInstallation(executable: url))
-            if setupError?.hasPrefix("找不到 Google Chrome") == true { setupError = nil }
+            setupError = nil
         } catch {
             launcher = nil
             setupError = error.localizedDescription
@@ -132,7 +134,7 @@ final class AppModel {
                     self?.apply(all: all)
                 }
             } catch {
-                self?.alert = AppAlert(title: "数据库错误", message: error.localizedDescription)
+                self?.alert = AppAlert(title: L("alert.databaseError"), message: error.localizedDescription)
             }
         }
     }
@@ -191,14 +193,14 @@ final class AppModel {
         let room = max(0, maxRunning - states.values.filter(\.isActive).count)
         for id in toStart.prefix(room) { launch(id) }
         if toStart.count > room {
-            alert = AppAlert(title: "已达到同时运行上限（\(maxRunning) 个）",
-                             message: "还有 \(toStart.count - room) 个环境没有启动。可以先关闭一些环境，或在设置里调高上限。")
+            alert = AppAlert(title: L("alert.runningLimit.title \(maxRunning)"),
+                             message: L("alert.runningLimit.message \(toStart.count - room)"))
         }
     }
 
     func launch(_ id: String) {
         guard let launcher else {
-            alert = AppAlert(title: "无法启动", message: setupError ?? "没有找到 Google Chrome")
+            alert = AppAlert(title: L("alert.cannotLaunch"), message: setupError ?? L("alert.chromeNotFound"))
             return
         }
         switch state(of: id) {
@@ -208,19 +210,20 @@ final class AppModel {
         case .idle: break
         }
         lastError[id] = nil
-        states[id] = .launching("准备")
+        checkFailed.remove(id)
+        states[id] = .launching(L("launch.stage.preparing"))
         Task {
             do {
                 let running = try await launcher.launch(profileId: id, progress: { stage in
                     let text = switch stage {
-                    case .startingProxy: "启动代理入口"
-                    case .checkingExit: "检测出口"
-                    case .exitChecked: "出口正常"
-                    case .seeding: "写入配置"
-                    case .initializing: "首次初始化"
-                    case .installingExtensions: "安装扩展"
+                    case .startingProxy: L("launch.stage.startingProxy")
+                    case .checkingExit: L("launch.stage.checkingExit")
+                    case .exitChecked: L("launch.stage.exitChecked")
+                    case .seeding: L("launch.stage.seeding")
+                    case .initializing: L("launch.stage.initializing")
+                    case .installingExtensions: L("launch.stage.installingExtensions")
                     case .warning(let w): w
-                    case .startingChrome: "启动 Chrome"
+                    case .startingChrome: L("launch.stage.startingChrome")
                     }
                     if case .warning(let w) = stage {
                         Task { @MainActor in AppModel.shared.lastWarning[id] = w }
@@ -238,7 +241,7 @@ final class AppModel {
                 states[id] = nil
                 lastError[id] = error.localizedDescription
                 let name = profile(id).map { "#\($0.seq) \($0.name)" } ?? id
-                alert = AppAlert(title: "\(name) 启动失败", message: error.localizedDescription)
+                alert = AppAlert(title: L("alert.launchFailed \(name)"), message: error.localizedDescription)
             }
         }
     }
@@ -316,7 +319,7 @@ final class AppModel {
         let upstream: Upstream
         if let proxy = p.proxy { upstream = .proxy(proxy) }
         else if p.allowDirect { upstream = .direct }
-        else { alert = AppAlert(title: "无法检测", message: "这个环境没有配置代理"); return }
+        else { alert = AppAlert(title: L("alert.cannotCheck"), message: L("alert.cannotCheck.noProxy")); return }
         checking.insert(id)
         Task {
             defer { checking.remove(id) }
@@ -324,9 +327,11 @@ final class AppModel {
                 let info = try await GeoCheck.check(upstream: upstream)
                 try store.recordExit(info, for: id)
                 lastError[id] = nil
+                checkFailed.remove(id)
             } catch {
                 lastError[id] = error.localizedDescription
-                alert = AppAlert(title: "#\(p.seq) \(p.name) 检测失败", message: error.localizedDescription)
+                checkFailed.remove(id)
+                alert = AppAlert(title: L("alert.checkFailed \(p.seq) \(p.name)"), message: error.localizedDescription)
             }
         }
     }
@@ -336,20 +341,20 @@ final class AppModel {
     /// 保存（新建或更新）。返回保存后的环境；失败抛错由调用方展示。
     @discardableResult
     func save(_ profile: Profile, isNew: Bool) throws -> Profile {
-        guard let store else { throw StoreError.notFound("数据库未打开") }
+        guard let store else { throw StoreError.notFound(L("alert.databaseNotOpen")) }
         var p = profile
         if isNew {
             // 名称留空：先插入拿到序号，再命名为"环境-序号"
             let autoName = p.name.isEmpty
-            if autoName { p.name = "环境" }
+            if autoName { p.name = L("profile.placeholderName") }
             var saved = try store.insert(p)
             if autoName {
-                saved.name = "环境-\(saved.seq)"
+                saved.name = L("profile.defaultName \(saved.seq)")
                 try store.update(saved)
             }
             return saved
         }
-        if p.name.isEmpty { p.name = "环境-\(p.seq)" }
+        if p.name.isEmpty { p.name = L("profile.defaultName \(p.seq)") }
         try store.update(p)
         return p
     }
@@ -360,7 +365,7 @@ final class AppModel {
             try? store.softDelete(id)
         }
         if ids.contains(where: { state(of: $0).isActive }) {
-            alert = AppAlert(title: "部分环境未删除", message: "正在运行的环境需要先关闭。")
+            alert = AppAlert(title: L("alert.trashPartial"), message: L("alert.trashPartial.message"))
         }
     }
 
@@ -370,14 +375,14 @@ final class AppModel {
         for id in ids {
             do { try store.restore(id) } catch { failures.append(error.localizedDescription) }
         }
-        if !failures.isEmpty { alert = AppAlert(title: "部分环境无法恢复", message: failures.joined(separator: "\n")) }
+        if !failures.isEmpty { alert = AppAlert(title: L("alert.restorePartial"), message: failures.joined(separator: "\n")) }
     }
 
     func purge(_ ids: [String]) {
         guard let store else { return }
         for id in ids where !state(of: id).isActive {
             do { try store.purge(id) } catch {
-                alert = AppAlert(title: "删除失败", message: error.localizedDescription)
+                alert = AppAlert(title: L("alert.purgeFailed"), message: error.localizedDescription)
             }
         }
     }
@@ -396,14 +401,14 @@ final class AppModel {
     /// 重命名标签（所有环境）；新名称已存在时合并。
     func renameTag(_ old: String, to new: String) {
         do { try store?.renameTag(old, to: new) } catch {
-            alert = AppAlert(title: "重命名标签失败", message: error.localizedDescription)
+            alert = AppAlert(title: L("alert.renameTagFailed"), message: error.localizedDescription)
         }
     }
 
     /// 从所有环境上移除这个标签（环境本身不受影响）。
     func deleteTag(_ tag: String) {
         do { try store?.deleteTag(tag) } catch {
-            alert = AppAlert(title: "删除标签失败", message: error.localizedDescription)
+            alert = AppAlert(title: L("alert.deleteTagFailed"), message: error.localizedDescription)
         }
     }
 
@@ -412,7 +417,7 @@ final class AppModel {
         if FileManager.default.fileExists(atPath: dir.path) {
             NSWorkspace.shared.activateFileViewerSelecting([dir])
         } else {
-            alert = AppAlert(title: "环境目录还不存在", message: "第一次启动后才会创建。")
+            alert = AppAlert(title: L("alert.noProfileDirectory"), message: L("alert.noProfileDirectory.message"))
         }
     }
 }
