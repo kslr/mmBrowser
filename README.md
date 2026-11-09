@@ -38,3 +38,7 @@ open build/mmBrowser.app
 ```
 
 数据目录默认是 `~/Library/Application Support/mmBrowser`，设置环境变量 `MMBROWSER_HOME` 可以换到别处（比如测试时用临时目录）。
+
+## 许可证
+
+[GPL-3.0](LICENSE)。Copyright (C) 2026 kslr
