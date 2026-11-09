@@ -49,3 +49,21 @@ struct StoreTests {
         #expect(abs(back.checkedAt.timeIntervalSince(info.checkedAt)) < 0.01)
     }
 }
+
+@Suite("分组")
+struct GroupTests {
+    @Test func renameDeleteMove() throws {
+        let s = try Store(inMemory: AppPaths(root: FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)))
+        let g = try s.group(named: "客户A")
+        let h = try s.group(named: "客户B")
+        #expect(try s.group(named: "客户A").id == g.id)
+        let a = try s.insert(Profile(name: "a", groupId: g.id))
+        let b = try s.insert(Profile(name: "b"))
+        try s.move([b.id], toGroup: h.id)
+        #expect(try s.profile(id: b.id)?.groupId == h.id)
+        try s.renameGroup(g.id!, to: "客户A2")
+        #expect(try s.groups().map(\.name) == ["客户A2", "客户B"])
+        try s.deleteGroup(g.id!)
+        #expect(try s.profile(id: a.id)?.groupId == nil)
+    }
+}

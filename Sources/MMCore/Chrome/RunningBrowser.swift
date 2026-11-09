@@ -63,14 +63,29 @@ public final class RunningBrowser: @unchecked Sendable {
 
     /// 正常退出（相当于 Cmd-Q，Chrome 会保存会话）。超时后强制结束。
     public func terminate(timeout: TimeInterval = 10) async {
+        await Self.terminate(pid: pid, timeout: timeout) { [weak self] in self?.isRunning ?? false }
+    }
+
+    /// 结束任意一个 Chrome 进程（比如应用上次异常退出后残留、已经断网的环境）。
+    public static func terminateOrphan(pid: Int32, timeout: TimeInterval = 10) async {
+        await terminate(pid: pid, timeout: timeout) { kill(pid, 0) == 0 }
+    }
+
+    private static func terminate(pid: Int32, timeout: TimeInterval, alive: @Sendable () -> Bool) async {
         let app = NSRunningApplication(processIdentifier: pid)
         if app?.terminate() != true {
             kill(pid, SIGTERM)
         }
         let deadline = Date().addingTimeInterval(timeout)
-        while isRunning, Date() < deadline {
+        while alive(), Date() < deadline {
             try? await Task.sleep(for: .milliseconds(200))
         }
-        if isRunning { kill(pid, SIGKILL) }
+        if alive() { kill(pid, SIGKILL) }
+    }
+
+    /// 把任意 PID 的 Chrome 窗口切到前台。
+    @MainActor
+    public static func activate(pid: Int32) {
+        NSRunningApplication(processIdentifier: pid)?.activate(options: [.activateAllWindows])
     }
 }

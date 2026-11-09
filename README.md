@@ -9,6 +9,15 @@ swift build
 swift test
 ```
 
+## 打包应用
+
+```bash
+./scripts/build-app.sh
+open build/mmBrowser.app
+```
+
+生成的 `build/mmBrowser.app` 可以拖进"应用程序"文件夹。命令行工具 `mmctl` 也打包在 `mmBrowser.app/Contents/MacOS/` 里。
+
 ## 命令行（P1 测试入口）
 
 ```bash

@@ -212,6 +212,27 @@ public final class Store: Sendable {
             return g
         }
     }
+
+    public func renameGroup(_ id: Int64, to name: String) throws {
+        try db.write { db in
+            try db.execute(sql: "UPDATE profileGroup SET name = ? WHERE id = ?", arguments: [name, id])
+        }
+    }
+
+    /// 删除分组，组内环境变为未分组（外键 ON DELETE SET NULL）。
+    public func deleteGroup(_ id: Int64) throws {
+        _ = try db.write { db in try ProfileGroup.deleteOne(db, key: id) }
+    }
+
+    /// 把一批环境移到某个分组（nil 表示未分组）。
+    public func move(_ profileIds: [String], toGroup groupId: Int64?) throws {
+        try db.write { db in
+            for id in profileIds {
+                try db.execute(sql: "UPDATE profile SET groupId = ?, updatedAt = ? WHERE id = ?",
+                               arguments: [groupId, Date(), id])
+            }
+        }
+    }
 }
 
 extension JSONEncoder {
