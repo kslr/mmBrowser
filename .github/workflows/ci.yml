@@ -1,0 +1,25 @@
+name: CI
+
+# main 上的推送由 release.yml 调用这里先跑测试
+on:
+  pull_request:
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Xcode 自带的 Swift 编不过本项目（6.0 的并发/抛错误报），和开发用的 VM 一样装 swift.org 的 6.4.2
+      - name: 安装 Swift 6.4.2
+        run: |
+          curl -fsSL -o swift.pkg https://download.swift.org/swift-6.4.2-release/xcode/swift-6.4.2-RELEASE/swift-6.4.2-RELEASE-osx.pkg
+          sudo installer -pkg swift.pkg -target /
+          echo /Library/Developer/Toolchains/swift-6.4.2-RELEASE.xctoolchain/usr/bin >> "$GITHUB_PATH"
+
+      - run: swift --version
+      - run: swift build
+      - run: swift test
+      - name: 本地化检查
+        run: python3 scripts/check-l10n.py

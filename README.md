@@ -18,6 +18,12 @@ open build/mmBrowser.app
 
 生成的 `build/mmBrowser.app` 可以拖进"应用程序"文件夹。命令行工具 `mmctl` 也打包在 `mmBrowser.app/Contents/MacOS/` 里。
 
+## CI 与发布
+
+- 每个 PR 都会跑编译、测试和本地化检查（`.github/workflows/ci.yml`）。
+- 每次推送到 main 自动发布（`.github/workflows/release.yml`）：先跑同样的测试，通过后打包并创建 GitHub Release。版本号取北京时间当天日期（如 `v2026.11.10`），同一天再发就是 `v2026.11.10.2`。连续推送时，上一次没发完的发布会被取消，只发最新的提交。
+- 只打 Apple Silicon（arm64）包。安装包只做了 ad-hoc 签名，下载后第一次要右键选"打开"。
+
 ## 命令行（P1 测试入口）
 
 ```bash

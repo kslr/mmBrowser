@@ -1,0 +1,56 @@
+name: Release
+
+# 每次推送到 main 自动发布（只打 Apple Silicon 包）。版本号取北京时间当天日期（如 2026.11.9），同一天再发就是 2026.11.9.2、2026.11.9.3……
+on:
+  push:
+    branches: [main]
+
+# 新推送会取消上一次还没发完的发布，只发最新的提交；同时也避免两次推送算出同一个版本号
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: test
+    runs-on: macos-15  # arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Swift 6.4.2
+        run: |
+          curl -fsSL -o swift.pkg https://download.swift.org/swift-6.4.2-release/xcode/swift-6.4.2-RELEASE/swift-6.4.2-RELEASE-osx.pkg
+          sudo installer -pkg swift.pkg -target /
+          echo /Library/Developer/Toolchains/swift-6.4.2-RELEASE.xctoolchain/usr/bin >> "$GITHUB_PATH"
+
+      - name: 计算版本号
+        id: version
+        run: |
+          export TZ=Asia/Shanghai
+          base="$(date +%Y).$((10#$(date +%m))).$((10#$(date +%d)))"
+          version=$base n=1
+          while git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; do
+            n=$((n + 1)); version="$base.$n"
+          done
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: 打包
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          ./scripts/build-app.sh
+          ditto -c -k --keepParent build/mmBrowser.app "build/mmBrowser-$VERSION-arm64.zip"
+
+      - name: 发布
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "v$VERSION" "build/mmBrowser-$VERSION-arm64.zip" \
+            --target "$GITHUB_SHA" --title "mmBrowser $VERSION" --generate-notes
