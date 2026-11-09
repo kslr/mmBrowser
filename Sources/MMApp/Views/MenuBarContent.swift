@@ -19,7 +19,6 @@ struct MenuBarContent: View {
                 }
             }
             Divider()
-            Button("排列窗口（网格）") { model.arrangeWindows(.grid) }
             Button("全部关闭") { Task { await model.stopAll() } }
         }
         Divider()

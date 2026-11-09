@@ -241,12 +241,6 @@ struct ProfileListView: View {
                 } label: { Label("编辑", systemImage: "pencil") }
                     .disabled(selection.count != 1)
                 Menu {
-                    Button("排列成网格") { model.arrangeWindows(.grid) }
-                    Button("层叠") { model.arrangeWindows(.cascade) }
-                } label: { Label("排列窗口", systemImage: "rectangle.grid.2x2") }
-                .help("排列所有运行中环境的窗口（需要辅助功能权限）")
-                .disabled(model.profiles(in: .running).isEmpty)
-                Menu {
                     Button("新建环境…") { editing = .new(groupId: currentGroupId) }
                     Button("批量新建…") { batch = .create(groupId: currentGroupId) }
                     Divider()

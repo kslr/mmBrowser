@@ -324,29 +324,6 @@ extension AppModel {
         }
     }
 
-    // MARK: - 窗口
-
-    func arrangeWindows(_ layout: WindowArranger.Layout) {
-        let pids: [Int32] = profiles.compactMap {
-            switch state(of: $0.id) {
-            case .running(let r): r.pid
-            case .orphan(let pid): pid
-            default: nil
-            }
-        }
-        guard !pids.isEmpty else {
-            alert = AppAlert(title: "没有运行中的环境", message: "")
-            return
-        }
-        guard WindowArranger.isTrusted(prompt: true) else {
-            alert = AppAlert(title: "需要辅助功能权限",
-                             message: "请在 系统设置 → 隐私与安全性 → 辅助功能 里允许 mmBrowser，然后再试一次。")
-            WindowArranger.openAccessibilitySettings()
-            return
-        }
-        WindowArranger.arrange(pids: pids, layout: layout)
-    }
-
     // MARK: - 扩展库
 
     var extensionLibrary: [ExtensionEntry] {

@@ -101,20 +101,6 @@ struct ChromeTests {
     }
 }
 
-@Suite("窗口排列")
-struct ArrangeTests {
-    @Test @MainActor func grid() {
-        let area = CGRect(x: 0, y: 25, width: 1200, height: 800)
-        #expect(WindowArranger.gridFrames(count: 0, in: area).isEmpty)
-        let f4 = WindowArranger.gridFrames(count: 4, in: area)
-        #expect(f4.count == 4)
-        #expect(f4[0].minX == 6 && f4[0].minY == 31 && f4[1].minX > f4[0].maxX && f4[2].minY > f4[0].maxY)
-        let f5 = WindowArranger.gridFrames(count: 5, in: area)  // 3 列 2 行
-        #expect(Set(f5.map(\.minY)).count == 2 && Set(f5.map(\.minX)).count == 3)
-        #expect(f5.allSatisfy { area.contains($0) })
-    }
-}
-
 @Suite("会话文件")
 struct SessionTests {
     /// 构造一条 SNSS 命令：uint16 长度（含命令字节）+ 命令字节 + 负载
