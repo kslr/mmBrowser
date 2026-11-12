@@ -10,7 +10,7 @@ jobs:
     # 需要 Xcode 26（Swift 6.2）；更早的 Xcode 自带的 Swift 编不过本项目
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: xcodebuild -version
       - name: 编译并测试
         run: xcodebuild test -project mmBrowser.xcodeproj -scheme mmBrowser -destination 'platform=macOS' -derivedDataPath "$RUNNER_TEMP/DerivedData"
