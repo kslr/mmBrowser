@@ -20,6 +20,15 @@ for lang in en zh-Hans; do
     echo '"CFBundleDisplayName" = "mmBrowser";' > "$APP/Contents/Resources/$lang.lproj/InfoPlist.strings"
 done
 
+# 应用图标：用 Resources/AppIcon.png（1024×1024）生成各尺寸，再打成 AppIcon.icns
+ICONSET=build/AppIcon.iconset
+rm -rf "$ICONSET" && mkdir -p "$ICONSET"
+for size in 16 32 128 256 512; do
+    sips -z $size $size Resources/AppIcon.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+    sips -z $((size * 2)) $((size * 2)) Resources/AppIcon.png --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
+
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -31,6 +40,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleLocalizations</key><array><string>en</string><string>zh-Hans</string></array>
     <key>CFBundleExecutable</key><string>mmBrowser</string>
+    <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>${VERSION}</string>
     <key>CFBundleVersion</key><string>${VERSION}</string>
