@@ -184,7 +184,7 @@ enum SnapshotRunner {
         return failures == 0
     }
 
-    private static func seedDemoData(_ model: AppModel) {
+    static func seedDemoData(_ model: AppModel) {
         guard let store = model.store, (try? store.profiles(includeDeleted: true).isEmpty) == true else { return }
         let samples: [(String, String, String, [String], String?)] = [
             ("客户A-广告户01", "socks5://u1:p@203.0.113.10:1080", "en-US", ["客户A", "广告"], "US"),

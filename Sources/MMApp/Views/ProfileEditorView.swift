@@ -548,3 +548,13 @@ struct ExpandRow: View {
         .buttonStyle(.plain)
     }
 }
+
+#if DEBUG
+#Preview("编辑环境") {
+    ProfileEditorView(target: .edit(AppModel.preview.profiles[0].id)).environment(AppModel.preview)
+}
+
+#Preview("新建环境") {
+    ProfileEditorView(target: .new(tag: nil)).environment(AppModel.preview)
+}
+#endif

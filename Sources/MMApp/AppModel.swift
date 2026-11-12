@@ -75,8 +75,8 @@ final class AppModel {
         reloadChrome()
         purgeOldTrash()
         scanOrphans()
-        orphanTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
-            MainActor.assumeIsolated { AppModel.shared.scanOrphans() }
+        orphanTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.scanOrphans() }
         }
     }
 

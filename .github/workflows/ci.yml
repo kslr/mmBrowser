@@ -7,19 +7,13 @@ on:
 
 jobs:
   test:
-    runs-on: macos-15
+    # 需要 Xcode 26（Swift 6.2）；更早的 Xcode 自带的 Swift 编不过本项目
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
-
-      # Xcode 自带的 Swift 编不过本项目（6.0 的并发/抛错误报），和开发用的 VM 一样装 swift.org 的 6.4.2
-      - name: 安装 Swift 6.4.2
-        run: |
-          curl -fsSL -o swift.pkg https://download.swift.org/swift-6.4.2-release/xcode/swift-6.4.2-RELEASE/swift-6.4.2-RELEASE-osx.pkg
-          sudo installer -pkg swift.pkg -target /
-          echo /Library/Developer/Toolchains/swift-6.4.2-RELEASE.xctoolchain/usr/bin >> "$GITHUB_PATH"
-
-      - run: swift --version
-      - run: swift build
-      - run: swift test
+      - run: xcodebuild -version
+      - name: 编译并测试
+        run: xcodebuild test -project mmBrowser.xcodeproj -scheme mmBrowser -destination 'platform=macOS' -derivedDataPath "$RUNNER_TEMP/DerivedData"
+      # 用上一步构建时 Xcode 抽取的 key 核对 String Catalog（漏加的 key、没翻译的条目、占位符不一致）
       - name: 本地化检查
-        run: python3 scripts/check-l10n.py
+        run: python3 scripts/check-l10n.py --derived-data "$RUNNER_TEMP/DerivedData"

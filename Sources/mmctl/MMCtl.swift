@@ -93,8 +93,8 @@ struct ProfileOptions: ParsableArguments {
     }
 }
 
-extension ProxyConfig.Kind: ExpressibleByArgument {}
-extension GeolocationPolicy: ExpressibleByArgument {}
+extension ProxyConfig.Kind: @retroactive ExpressibleByArgument {}
+extension GeolocationPolicy: @retroactive ExpressibleByArgument {}
 
 func describe(_ p: Profile, running: Int32?) -> String {
     var lines = [

@@ -151,3 +151,9 @@ struct SettingsView: View {
         model.reloadChrome()
     }
 }
+
+#if DEBUG
+#Preview {
+    SettingsView().environment(AppModel.preview).frame(width: 600, height: 700)
+}
+#endif

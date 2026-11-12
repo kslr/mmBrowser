@@ -162,7 +162,7 @@
 
 ## 8. P2 交付内容
 
-- `Sources/MMApp`（产物 `mmBrowser`）：SwiftUI 应用，`scripts/build-app.sh` 打包成 `build/mmBrowser.app`（本地 ad-hoc 签名，`mmctl` 一起放在 `Contents/MacOS/` 里）。
+- `Sources/MMApp`（产物 `mmBrowser`）：SwiftUI 应用，用 `mmBrowser.xcodeproj` 构建成 `mmBrowser.app`（本地 ad-hoc 签名，`mmctl` 一起放在 `Contents/MacOS/` 里）。
 - 主窗口：
   - 侧栏：全部、运行中、代理、标签（重命名、删除）、无标签、回收站，带数量。
   - 表格：序号、名称（主题色圆点）、状态、标签、代理（S5/HTTP 标签）、出口、语言/时区、最后打开、备注；支持多选、搜索（名称/备注/IP/标签/序号）、排序；双击启动，已运行的切到前台。

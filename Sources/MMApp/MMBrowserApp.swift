@@ -40,11 +40,6 @@ extension Notification.Name {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationWillFinishLaunching(_ notification: Notification) {
-        // 以普通应用方式运行（有程序坞图标、能获得焦点），直接 swift run 时也一样
-        NSApp.setActivationPolicy(.regular)
-    }
-
     func applicationDidFinishLaunching(_ notification: Notification) {
         if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
             let selfTest = CommandLine.arguments.contains("--selftest")

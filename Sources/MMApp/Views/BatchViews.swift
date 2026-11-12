@@ -405,3 +405,17 @@ struct ExpiryView: View {
         .frame(width: 420, height: 220)
     }
 }
+
+#if DEBUG
+#Preview("批量新建") {
+    BatchCreateView(tag: nil).environment(AppModel.preview)
+}
+
+#Preview("批量编辑") {
+    BatchEditView(ids: AppModel.preview.profiles.prefix(3).map(\.id)).environment(AppModel.preview)
+}
+
+#Preview("分配代理") {
+    AssignProxiesView(ids: AppModel.preview.profiles.prefix(3).map(\.id)).environment(AppModel.preview)
+}
+#endif

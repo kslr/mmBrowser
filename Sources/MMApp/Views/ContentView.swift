@@ -68,3 +68,13 @@ enum EditorTarget: Identifiable {
         }
     }
 }
+
+#if DEBUG
+#Preview("主窗口") {
+    ContentView().environment(AppModel.preview).frame(width: 1280, height: 720)
+}
+
+#Preview("代理列表") {
+    ContentView(initialSidebar: .proxies).environment(AppModel.preview).frame(width: 1280, height: 720)
+}
+#endif
