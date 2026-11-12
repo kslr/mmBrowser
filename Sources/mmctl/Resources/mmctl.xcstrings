@@ -2,6 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "cli.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -18,6 +19,7 @@
       }
     },
     "cli.check.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -34,6 +36,7 @@
       }
     },
     "cli.check.currentLanguage %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -50,6 +53,7 @@
       }
     },
     "cli.check.error.profileRequired" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -66,6 +70,7 @@
       }
     },
     "cli.check.help.profile" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -82,6 +87,7 @@
       }
     },
     "cli.check.help.proxy" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -98,6 +104,7 @@
       }
     },
     "cli.check.ip %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -114,6 +121,7 @@
       }
     },
     "cli.check.language %@ %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -130,6 +138,7 @@
       }
     },
     "cli.check.latency %lld %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -146,6 +155,7 @@
       }
     },
     "cli.check.location %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -162,6 +172,7 @@
       }
     },
     "cli.check.org %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -178,6 +189,7 @@
       }
     },
     "cli.check.timezone %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -194,6 +206,7 @@
       }
     },
     "cli.chrome.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -210,6 +223,7 @@
       }
     },
     "cli.chrome.path %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -226,6 +240,7 @@
       }
     },
     "cli.chrome.version %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -242,6 +257,7 @@
       }
     },
     "cli.cookies.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -258,6 +274,7 @@
       }
     },
     "cli.cookies.export.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -274,6 +291,7 @@
       }
     },
     "cli.cookies.export.help.file" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -290,6 +308,7 @@
       }
     },
     "cli.cookies.exported %lld %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -306,6 +325,7 @@
       }
     },
     "cli.cookies.import.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -322,6 +342,7 @@
       }
     },
     "cli.cookies.import.help.file" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -338,6 +359,7 @@
       }
     },
     "cli.cookies.import.help.replace" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -354,6 +376,7 @@
       }
     },
     "cli.cookies.imported %lld" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -370,6 +393,7 @@
       }
     },
     "cli.create.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -386,6 +410,7 @@
       }
     },
     "cli.create.error.proxyRequired" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -402,6 +427,7 @@
       }
     },
     "cli.create.help.name" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -418,6 +444,7 @@
       }
     },
     "cli.discussion" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -434,6 +461,7 @@
       }
     },
     "cli.error.color" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -450,6 +478,7 @@
       }
     },
     "cli.error.extension %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -466,6 +495,7 @@
       }
     },
     "cli.error.language %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -482,6 +512,7 @@
       }
     },
     "cli.error.timezone %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -498,6 +529,7 @@
       }
     },
     "cli.error.window" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -514,6 +546,7 @@
       }
     },
     "cli.help.profile" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -530,6 +563,7 @@
       }
     },
     "cli.help.proxyType" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -546,6 +580,7 @@
       }
     },
     "cli.launch.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -562,6 +597,7 @@
       }
     },
     "cli.launch.closing" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -578,6 +614,7 @@
       }
     },
     "cli.launch.exit %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -594,6 +631,7 @@
       }
     },
     "cli.launch.exited" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -610,6 +648,7 @@
       }
     },
     "cli.launch.help.verbose" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -626,6 +665,7 @@
       }
     },
     "cli.launch.progress.chrome" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -642,6 +682,7 @@
       }
     },
     "cli.launch.progress.exit" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -658,6 +699,7 @@
       }
     },
     "cli.launch.progress.extensions" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -674,6 +716,7 @@
       }
     },
     "cli.launch.progress.initialize" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -690,6 +733,7 @@
       }
     },
     "cli.launch.progress.proxy" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -706,6 +750,7 @@
       }
     },
     "cli.launch.progress.seed" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -722,6 +767,7 @@
       }
     },
     "cli.launch.quitHint" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -738,6 +784,7 @@
       }
     },
     "cli.launch.started %lld %lld %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -754,6 +801,7 @@
       }
     },
     "cli.launch.starting %lld %@ %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -770,6 +818,7 @@
       }
     },
     "cli.list.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -786,6 +835,7 @@
       }
     },
     "cli.list.empty" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -802,6 +852,7 @@
       }
     },
     "cli.list.emptyTrash" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -818,6 +869,7 @@
       }
     },
     "cli.list.help.deleted" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -834,6 +886,7 @@
       }
     },
     "cli.plan.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -850,6 +903,7 @@
       }
     },
     "cli.plan.arguments" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -866,6 +920,7 @@
       }
     },
     "cli.plan.checkPageOpen" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -882,6 +937,7 @@
       }
     },
     "cli.plan.environment %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -898,6 +954,7 @@
       }
     },
     "cli.plan.exitTimezone" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -914,6 +971,7 @@
       }
     },
     "cli.profile.deletedAt %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -930,6 +988,7 @@
       }
     },
     "cli.profile.directory %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -946,6 +1005,7 @@
       }
     },
     "cli.profile.everyLaunch" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -962,6 +1022,7 @@
       }
     },
     "cli.profile.exit %@ %@ %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -978,6 +1039,7 @@
       }
     },
     "cli.profile.extensions %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -994,6 +1056,7 @@
       }
     },
     "cli.profile.extraArgs %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1010,6 +1073,7 @@
       }
     },
     "cli.profile.firstLaunch" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1026,6 +1090,7 @@
       }
     },
     "cli.profile.geolocation %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1042,6 +1107,7 @@
       }
     },
     "cli.profile.help.alwaysOpenUrls" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1058,6 +1124,7 @@
       }
     },
     "cli.profile.help.color" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1074,6 +1141,7 @@
       }
     },
     "cli.profile.help.direct" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1090,6 +1158,7 @@
       }
     },
     "cli.profile.help.extensions" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1106,6 +1175,7 @@
       }
     },
     "cli.profile.help.extraArgs" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1122,6 +1192,7 @@
       }
     },
     "cli.profile.help.geo" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1138,6 +1209,7 @@
       }
     },
     "cli.profile.help.lang" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1154,6 +1226,7 @@
       }
     },
     "cli.profile.help.notes" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1170,6 +1243,7 @@
       }
     },
     "cli.profile.help.proxy" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1186,6 +1260,7 @@
       }
     },
     "cli.profile.help.proxyType" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1202,6 +1277,7 @@
       }
     },
     "cli.profile.help.tags" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1218,6 +1294,7 @@
       }
     },
     "cli.profile.help.tz" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1234,6 +1311,7 @@
       }
     },
     "cli.profile.help.urls" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1250,6 +1328,7 @@
       }
     },
     "cli.profile.help.window" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1266,6 +1345,7 @@
       }
     },
     "cli.profile.id %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1282,6 +1362,7 @@
       }
     },
     "cli.profile.languageTimezone %@ %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1298,6 +1379,7 @@
       }
     },
     "cli.profile.notes %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1314,6 +1396,7 @@
       }
     },
     "cli.profile.proxy %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1330,6 +1413,7 @@
       }
     },
     "cli.profile.runningPID %lld" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1346,6 +1430,7 @@
       }
     },
     "cli.profile.startURLs %@ %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1362,6 +1447,7 @@
       }
     },
     "cli.profile.tags %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1378,6 +1464,7 @@
       }
     },
     "cli.profile.windowColor %@ %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1394,6 +1481,7 @@
       }
     },
     "cli.remove.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1410,6 +1498,7 @@
       }
     },
     "cli.remove.help.purge" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1426,6 +1515,7 @@
       }
     },
     "cli.remove.purged %lld %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1442,6 +1532,7 @@
       }
     },
     "cli.remove.trashed %lld %@ %lld" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1458,6 +1549,7 @@
       }
     },
     "cli.restore.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1474,6 +1566,7 @@
       }
     },
     "cli.restore.restored %lld %@" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1490,6 +1583,7 @@
       }
     },
     "cli.serve.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1506,6 +1600,7 @@
       }
     },
     "cli.serve.error.proxyRequired" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1522,6 +1617,7 @@
       }
     },
     "cli.serve.help.direct" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1538,6 +1634,7 @@
       }
     },
     "cli.serve.help.proxy" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1554,6 +1651,7 @@
       }
     },
     "cli.serve.listening %lld" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1570,6 +1668,7 @@
       }
     },
     "cli.set.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1586,6 +1685,7 @@
       }
     },
     "cli.set.help.name" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1602,6 +1702,7 @@
       }
     },
     "cli.show.abstract" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1618,6 +1719,7 @@
       }
     },
     "common.ask" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1634,6 +1736,7 @@
       }
     },
     "common.autoExitIP" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1650,6 +1753,7 @@
       }
     },
     "common.block" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1666,6 +1770,7 @@
       }
     },
     "common.default" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1682,6 +1787,7 @@
       }
     },
     "common.direct" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1698,6 +1804,7 @@
       }
     },
     "common.directAllowed" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1714,6 +1821,7 @@
       }
     },
     "common.notConfigured" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1730,6 +1838,7 @@
       }
     },
     "common.running" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
