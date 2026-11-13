@@ -185,7 +185,8 @@ def check_extraction(root, derived, problems, warnings):
         if not data:
             problems.append(f"{name}: no .stringsdata for target {target} under {derived}; build first")
             continue
-        built = min(f.stat().st_mtime for f in data)
+        # 增量构建只重新抽取改过的文件，所以拿最近一次抽取的时间比
+        built = max(f.stat().st_mtime for f in data)
         if any(f.stat().st_mtime > built for f in (root / "Sources" / name).rglob("*.swift")):
             problems.append(f"{name}: sources changed since the last build in {derived}; build again first")
             continue
