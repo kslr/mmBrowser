@@ -221,7 +221,6 @@ final class AppModel {
                     case .checkingExit: L("launch.stage.checkingExit")
                     case .exitChecked: L("launch.stage.exitChecked")
                     case .seeding: L("launch.stage.seeding")
-                    case .initializing: L("launch.stage.initializing")
                     case .installingExtensions: L("launch.stage.installingExtensions")
                     case .warning(let w): w
                     case .startingChrome: L("launch.stage.startingChrome")

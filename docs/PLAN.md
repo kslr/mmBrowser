@@ -26,7 +26,7 @@
 | `Intl` locale、日期格式、时区名称 | `-AppleLanguages '(xx-YY)'`（只对当前进程生效） | ✅ 但会多开一个垃圾标签页 |
 | 去掉垃圾标签页 | 写成 `-AppleLanguages '("xx-YY", "<")'`：macOS 取第一个语言；Chrome 把它当网址时因含 `<` 判为无效而跳过 | ✅（`(xx, <>)` 会让 Chrome 崩溃，不能用） |
 | ~~两步启动~~ | 先 `--no-startup-window` 再转交网址 | ❌ 已放弃：这样启动不会执行"恢复上次会话" |
-| 启动时恢复上次会话 | `session.restore_on_startup` 受 Secure Preferences 的 HMAC 保护，直接写文件会被丢弃；改为首次初始化时在无界面 Chrome 的 `chrome://settings` 里调用 `chrome.settingsPrivate.setPref` 写入 | ✅ 重启后恢复全部标签页 |
+| 启动时恢复上次会话 | `session.restore_on_startup` 受 Secure Preferences 的 HMAC 保护，直接写文件会被丢弃。曾经在首次初始化时用无界面 Chrome 调 `chrome.settingsPrivate.setPref` 写入，但无界面 Chrome 的虚拟屏幕只有 800×600，会把 756×556 的窗口大小存进配置，正式打开时窗口很小，是明显的特征；现在改用启动参数 `--restore-last-session`（覆盖"启动时"设置，macOS 作为登录项重开 Chrome 时 Chrome 自己也会加） | ✅ 重启后恢复全部标签页 |
 | 名称、主题色、定位权限、WebRTC 配置、关闭投屏发现 | 直接写 `Preferences` / `Local State`（这些不受完整性校验） | ✅ |
 | WebRTC | `--force-webrtc-ip-handling-policy=disable_non_proxied_udp` + 对应配置 | ✅ 候选地址为 0 |
 | 定位权限 | `profile.default_content_setting_values.geolocation = 2` | ✅ `denied` |
@@ -52,7 +52,6 @@
 │   │              切到前台 / 关闭                                  │
 │   ├─ ProfileSeed 每次启动前写入 Chrome Preferences（名称、主题色、 │
 │   │              定位权限等不受校验的项）                          │
-│   ├─ ProfileInitializer 首次离线初始化，写入受校验的项（恢复会话）  │
 │   └─ GeoCheck    经由代理查询出口 IP、国家、城市、时区              │
 └─────────────────────────────────────────────────────────────────┘
           │ Process（不连接 CDP）
@@ -78,7 +77,7 @@
 - 本地入口：`127.0.0.1:0`（随机端口），实现 SOCKS5 无认证的 CONNECT 命令。Chrome 用 SOCKS5 时由代理端解析域名。
 - 上游：SOCKS5（RFC 1929 用户名密码认证）或 HTTP（CONNECT 加 Basic 认证）。
 - **断开即断网**：启动前先检查连通性和出口信息，失败就不启动；运行中上游断开就直接断网，不回落到直连。
-- 防泄漏的启动参数：`--host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE 127.0.0.1"`、`--force-webrtc-ip-handling-policy=disable_non_proxied_udp`、`--disable-quic`。
+- 防泄漏的启动参数：`--force-webrtc-ip-handling-policy=disable_non_proxied_udp`、`--disable-quic`。不用 `--host-resolver-rules`：Chrome 把它列为不受支持的参数，会弹警告条；SOCKS5 本来就由代理端解析域名，走代理的网址预连接也不会在本地预解析 DNS。（无界面的维护 Chrome 仍然带着它。）
 - 环境也可以显式设为"直连"（默认关闭，需要手动选，界面上会有明显警告）。
 - 唯一性：同一个代理（主机、端口、用户名）只能绑定一个环境；不同环境检测出相同出口 IP 时给出警告。
 
@@ -86,11 +85,10 @@
 1. 检查环境没有在运行（Chrome 的 `SingletonLock` 指向的 PID 是否存活）。
 2. 启动本地转发入口，经由它检测出口（失败就不启动）；时区为"自动"时取出口 IP 所在时区。
 3. 写入 Preferences 种子（不受校验的项）。
-4. 首次使用时离线初始化（`ProfileInitializer`）：无界面启动 Chrome，代理指向不存在的端口、禁止本地 DNS，调试端口只监听 127.0.0.1 且只存在一两秒；在 `chrome://settings` 里设置"启动时恢复上次会话"，正常退出后删掉这次的会话记录，写入 `.mm-initialized` 标记（带版本号，以后新增一次性设置可以补跑）。
-5. 一步启动：`TZ=... chrome --user-data-dir=... --use-mock-keychain --proxy-server=... [防泄漏参数] --lang=... --accept-lang=... [窗口尺寸] [自定义参数] -AppleLanguages '("lang", "<")' [启动页]`。
+4. 一步启动：`TZ=... chrome --user-data-dir=... --use-mock-keychain --restore-last-session --proxy-server=... [防泄漏参数] --lang=... --accept-lang=... [窗口尺寸] [自定义参数] -AppleLanguages '("lang", "<")' [启动页]`。
    - 启动页默认只在第一次打开环境时传入；之后靠恢复会话（如果每次都传，会在恢复的标签页之外再多开一份）。环境可以设置"每次启动都打开启动页"。
-6. 等 `SingletonLock` 指向我们启动的进程，确认它成了这个环境的主进程。
-7. 进程退出后立即关闭本地入口。
+5. 等 `SingletonLock` 指向我们启动的进程，确认它成了这个环境的主进程。
+6. 进程退出后立即关闭本地入口。
 
 ## 4. 功能清单（按通用指纹浏览器）
 
@@ -151,11 +149,11 @@
 | 3 | 定位权限默认禁止 | ✅ |
 | 4 | WebRTC 只走代理 | ✅ |
 | 5 | 外部扩展 JSON 按环境生效 | ✅ 见第 9 节 |
-| 6 | 会话恢复与启动页 | ✅ 改为一步启动 + 首次离线初始化（见 3.2） |
+| 6 | 会话恢复与启动页 | ✅ 改为一步启动 + `--restore-last-session`（见 3.2） |
 
 ## 7. P1 交付内容
 
-- `Sources/MMCore`：Store（GRDB）、ProxyEngine（本地 SOCKS5 入口 → 上游 SOCKS5 / HTTP CONNECT / 直连）、GeoCheck、ProfileSeed、ProfileInitializer、LaunchPlan、BrowserLauncher、RunningBrowser。
+- `Sources/MMCore`：Store（GRDB）、ProxyEngine（本地 SOCKS5 入口 → 上游 SOCKS5 / HTTP CONNECT / 直连）、GeoCheck、ProfileSeed、LaunchPlan、BrowserLauncher、RunningBrowser。
 - `Sources/mmctl`：命令行测试入口（create / list / show / set / check / launch / plan / rm / restore / serve / chrome）。
 - `Tests/MMCoreTests`：19 个测试，覆盖代理解析、存储约束、代理链路（含认证失败、上游不可达、停止时切断隧道）、启动参数和配置种子。
 - 测试时可以用 `MMBROWSER_HOME` 指向临时目录，不影响正式数据。
@@ -208,6 +206,7 @@
 - **环境备份/迁移**：`.mmprofile`（zip：`profile.json` + 不含缓存的浏览器数据）。导入为新环境；代理被占用时去掉代理并提示；导入后重新做首次初始化（Chrome 的配置签名和机器绑定）。
 - **扩展预装**：设置里维护扩展库（粘贴应用商店链接），环境里勾选。启动前写入 `External Extensions/<id>.json`；缺失或"等待确认"的扩展，用无界面 Chrome 经由该环境自己的代理下载并通过 `chrome://extensions` 的 management 接口启用；取消勾选后下次启动自动卸载。用户自己停用的扩展不会被重新启用。实测：uBlock Origin Lite、Dark Reader 安装、启用、卸载都正常。
 - **维护时保护会话**：无界面维护前把 `Sessions` 挪开、结束后放回，既不在后台加载用户的标签页，也不会覆盖会话；中途崩溃时下次启动自动恢复。
+- **维护时保护窗口大小**：无界面 Chrome 退出时会把 800×600 虚拟屏幕上的窗口位置写进 `browser.window_placement`，维护前记下原值、结束后放回（原来没有就删掉），正式打开时窗口不会变小。
 - ~~窗口排列~~：已移除（需要辅助功能权限，不值得为它额外授权）。
 
 ### 自检

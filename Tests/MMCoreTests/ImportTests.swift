@@ -159,7 +159,6 @@ struct DataTests {
         let dir = store.paths.profileDir(src.id)
         try fm.createDirectory(at: dir.appendingPathComponent("Default/Cache"), withIntermediateDirectories: true)
         try Data("pw".utf8).write(to: dir.appendingPathComponent("Default/Login Data"))
-        try Data("1".utf8).write(to: dir.appendingPathComponent(ProfileInitializer.markerName))
 
         let file = root.appendingPathComponent("a.mmprofile")
         try ProfileBackup.export(profileId: src.id, store: store, isRunning: false, to: file)
@@ -175,7 +174,6 @@ struct DataTests {
         let newDir = store.paths.profileDir(r.profile.id)
         #expect(try Data(contentsOf: newDir.appendingPathComponent("Default/Login Data")) == Data("pw".utf8))
         #expect(!fm.fileExists(atPath: newDir.appendingPathComponent("Default/Cache").path))
-        #expect(!fm.fileExists(atPath: newDir.appendingPathComponent(ProfileInitializer.markerName).path))
 
         // 源环境删掉后再导入，代理可以保留
         try store.purge(src.id)

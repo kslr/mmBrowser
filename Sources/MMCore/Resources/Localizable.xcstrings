@@ -593,22 +593,6 @@
         }
       }
     },
-    "error.chrome.initialize %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Initialization: failed to set %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "初始化：设置 %@ 失败"
-          }
-        }
-      }
-    },
     "error.chrome.maintenance.attach %@" : {
       "localizations" : {
         "en" : {

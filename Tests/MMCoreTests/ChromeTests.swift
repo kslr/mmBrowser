@@ -21,8 +21,10 @@ struct ChromeTests {
         let args = first.arguments
         #expect(args.contains("--user-data-dir=/tmp/mm/p1"))
         #expect(args.contains("--use-mock-keychain"))
+        #expect(args.contains("--restore-last-session"))
         #expect(args.contains("--proxy-server=socks5://127.0.0.1:40000"))
-        #expect(args.contains("--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1"))
+        // Chrome 会对这个参数弹"不受支持的命令行标记"警告条
+        #expect(!args.contains { $0.hasPrefix("--host-resolver-rules") })
         #expect(args.contains("--force-webrtc-ip-handling-policy=disable_non_proxied_udp"))
         #expect(args.contains("--lang=ja-JP"))
         #expect(args.contains("--accept-lang=ja-JP,ja"))
@@ -80,7 +82,7 @@ struct ChromeTests {
         var prefs = try ProfileSeed.readJSON(prefsURL)
         #expect((prefs["profile"] as? [String: Any])?["name"] as? String == "客户A-01")
         #expect(((prefs["profile"] as? [String: Any])?["default_content_setting_values"] as? [String: Any])?["geolocation"] as? Int == 2)
-        #expect(prefs["session"] == nil, "受校验的项不写文件，交给 ProfileInitializer")
+        #expect(prefs["session"] == nil, "受校验的项不写文件，恢复会话用启动参数")
 
         // 模拟 Chrome 运行后写了自己的配置
         ProfileSeed.set(&prefs, "chrome_owned.some_key", "keep me")
@@ -98,6 +100,38 @@ struct ChromeTests {
         #expect(info?["name"] as? String == "改名")
         let mode = try FileManager.default.attributesOfItem(atPath: prefsURL.path)[.posixPermissions] as? Int
         #expect(mode == 0o600)
+    }
+
+    @Test("无界面维护写进的窗口大小会被撤销：原来没有就删掉，原来有就放回")
+    func windowPlacementRestore() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("mmwin-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir.appendingPathComponent("Default"), withIntermediateDirectories: true)
+        let prefsURL = dir.appendingPathComponent("Default/Preferences")
+        let headless: [String: Any] = ["left": 22, "top": 22, "right": 778, "bottom": 578]
+        let user: [String: Any] = ["left": 10, "top": 35, "right": 1060, "bottom": 1045]
+
+        // 首次初始化：之前没有窗口记录
+        try ProfileSeed.writeJSON(["browser": ["has_seen_welcome_page": true]], to: prefsURL)
+        let none = HeadlessChrome.windowPlacement(dir)
+        #expect(none == nil)
+        var prefs = try ProfileSeed.readJSON(prefsURL)
+        ProfileSeed.set(&prefs, HeadlessChrome.windowPlacementKey, headless)
+        try ProfileSeed.writeJSON(prefs, to: prefsURL)
+        HeadlessChrome.restoreWindowPlacement(none, userDataDir: dir)
+        prefs = try ProfileSeed.readJSON(prefsURL)
+        #expect(ProfileSeed.get(prefs, HeadlessChrome.windowPlacementKey) == nil)
+        #expect(ProfileSeed.get(prefs, "browser.has_seen_welcome_page") as? Bool == true)
+
+        // 之后的维护（如装扩展）：放回用户自己的窗口大小
+        ProfileSeed.set(&prefs, HeadlessChrome.windowPlacementKey, user)
+        try ProfileSeed.writeJSON(prefs, to: prefsURL)
+        let saved = HeadlessChrome.windowPlacement(dir)
+        ProfileSeed.set(&prefs, HeadlessChrome.windowPlacementKey, headless)
+        try ProfileSeed.writeJSON(prefs, to: prefsURL)
+        HeadlessChrome.restoreWindowPlacement(saved, userDataDir: dir)
+        prefs = try ProfileSeed.readJSON(prefsURL)
+        #expect((ProfileSeed.get(prefs, HeadlessChrome.windowPlacementKey) as? [String: Any])?["right"] as? Int == 1060)
     }
 }
 

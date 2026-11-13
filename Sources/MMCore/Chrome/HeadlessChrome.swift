@@ -7,12 +7,14 @@ final class HeadlessChrome: @unchecked Sendable {
     let cdp: CDPClient
     private let portFile: URL
     private let userDataDir: URL
+    private let savedWindowPlacement: Any?
 
-    private init(process: Process, cdp: CDPClient, portFile: URL, userDataDir: URL) {
+    private init(process: Process, cdp: CDPClient, portFile: URL, userDataDir: URL, savedWindowPlacement: Any?) {
         self.process = process
         self.cdp = cdp
         self.portFile = portFile
         self.userDataDir = userDataDir
+        self.savedWindowPlacement = savedWindowPlacement
     }
 
     static func sessionsDir(_ userDataDir: URL) -> URL { userDataDir.appendingPathComponent("Default/Sessions") }
@@ -35,12 +37,30 @@ final class HeadlessChrome: @unchecked Sendable {
         try? fm.moveItem(at: savedSessionsDir(userDataDir), to: sessionsDir(userDataDir))
     }
 
+    static let windowPlacementKey = "browser.window_placement"
+
+    /// 正式浏览器上次的窗口位置和大小。无界面 Chrome 的虚拟屏幕只有 800×600，退出时会把这个值改成
+    /// 约 756×556 存进去，下次正式打开窗口就变得很小。所以维护前先记下，维护后原样放回（原来没有就删掉）。
+    static func windowPlacement(_ userDataDir: URL) -> Any? {
+        let prefs = try? ProfileSeed.readJSON(userDataDir.appendingPathComponent("Default/Preferences"))
+        return prefs.flatMap { ProfileSeed.get($0, windowPlacementKey) }
+    }
+
+    static func restoreWindowPlacement(_ saved: Any?, userDataDir: URL) {
+        let url = userDataDir.appendingPathComponent("Default/Preferences")
+        guard var prefs = try? ProfileSeed.readJSON(url), !prefs.isEmpty else { return }
+        if let saved { ProfileSeed.set(&prefs, windowPlacementKey, saved) }
+        else { ProfileSeed.remove(&prefs, windowPlacementKey) }
+        try? ProfileSeed.writeJSON(prefs, to: url)
+    }
+
     /// proxyPort 为 nil 时完全离线（代理指向不存在的端口）。
     static func start(userDataDir: URL, chrome: ChromeInstallation, proxyPort: UInt16?, timeout: TimeInterval = 30) async throws -> HeadlessChrome {
         let fm = FileManager.default
         let portFile = userDataDir.appendingPathComponent("DevToolsActivePort")
         try? fm.removeItem(at: portFile)
         try stashSessions(userDataDir)
+        let placement = windowPlacement(userDataDir)
 
         let p = Process()
         p.executableURL = chrome.executable
@@ -51,7 +71,7 @@ final class HeadlessChrome: @unchecked Sendable {
             "--no-first-run",
             "--no-default-browser-check",
             "--proxy-server=socks5://127.0.0.1:\(proxyPort ?? 1)",
-            "--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1",
+            "--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1",  // 无界面不会弹警告条，多一层保险
             "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
             "--disable-quic",
             "--remote-debugging-address=127.0.0.1",
@@ -84,11 +104,13 @@ final class HeadlessChrome: @unchecked Sendable {
             }
             let cdp = CDPClient(webSocketURL: wsURL!)
             await cdp.connect()
-            return HeadlessChrome(process: p, cdp: cdp, portFile: portFile, userDataDir: userDataDir)
+            return HeadlessChrome(process: p, cdp: cdp, portFile: portFile, userDataDir: userDataDir,
+                                  savedWindowPlacement: placement)
         } catch {
             p.terminate()
             p.waitUntilExit()
             try? fm.removeItem(at: portFile)
+            restoreWindowPlacement(placement, userDataDir: userDataDir)
             if fm.fileExists(atPath: savedSessionsDir(userDataDir).path) {
                 recoverSessions(userDataDir)
             } else {
@@ -134,6 +156,7 @@ final class HeadlessChrome: @unchecked Sendable {
     private func finish() {
         let fm = FileManager.default
         try? fm.removeItem(at: portFile)
+        Self.restoreWindowPlacement(savedWindowPlacement, userDataDir: userDataDir)
         if fm.fileExists(atPath: Self.savedSessionsDir(userDataDir).path) {
             Self.recoverSessions(userDataDir)
         } else {

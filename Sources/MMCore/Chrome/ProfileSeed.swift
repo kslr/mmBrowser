@@ -3,7 +3,7 @@ import Foundation
 /// 在 Chrome 启动前写入/更新它的配置文件（Chrome 未运行时才能写，否则会被它覆盖）。
 ///
 /// 只写不受完整性校验的项（名称、主题色、定位权限、语言、WebRTC 等），每次启动前都会更新。
-/// 受校验的项（如启动时恢复会话）由 `ProfileInitializer` 通过 Chrome 自己的设置接口写入。
+/// 受 Secure Preferences 签名保护的项（如"启动时"设置）不写，写了会被 Chrome 当作篡改丢弃；恢复会话改用启动参数。
 public enum ProfileSeed {
     public static func apply(profile: Profile, language: String, userDataDir: URL) throws {
         let fm = FileManager.default
@@ -74,6 +74,26 @@ public enum ProfileSeed {
     static func set(_ dict: inout [String: Any], _ path: String, _ value: Any) {
         let keys = path.split(separator: ".").map(String.init)
         setNested(&dict, keys[...], value)
+    }
+
+    /// 按点号路径读取嵌套字典里的值。
+    static func get(_ dict: [String: Any], _ path: String) -> Any? {
+        var current: Any? = dict
+        for key in path.split(separator: ".") {
+            current = (current as? [String: Any])?[String(key)]
+        }
+        return current
+    }
+
+    /// 按点号路径删除嵌套字典里的值。
+    static func remove(_ dict: inout [String: Any], _ path: String) {
+        let keys = path.split(separator: ".").map(String.init)
+        guard let last = keys.last else { return }
+        if keys.count == 1 { dict[last] = nil; return }
+        let parentPath = keys.dropLast().joined(separator: ".")
+        guard var parent = get(dict, parentPath) as? [String: Any] else { return }
+        parent[last] = nil
+        set(&dict, parentPath, parent)
     }
 
     private static func setNested(_ dict: inout [String: Any], _ keys: ArraySlice<String>, _ value: Any) {

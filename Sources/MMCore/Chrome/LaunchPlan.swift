@@ -2,7 +2,9 @@ import Foundation
 
 /// 一次启动要执行的命令。纯数据，便于测试和排查。
 ///
-/// 只启动一次进程（不用 `--no-startup-window`），这样 Chrome 会正常执行"启动时恢复上次的会话"。
+/// 恢复上次的会话用 `--restore-last-session`（macOS 作为登录项重开 Chrome 时 Chrome 自己也会加这个参数），
+/// 它覆盖"启动时"设置，不用改受签名保护的配置；新建的环境第一次打开时它不生效，正好打开起始页。
+/// 只启动一次进程（不用 `--no-startup-window`）。
 /// 语言用 `-AppleLanguages ("xx-YY", "<")`：macOS 把它解析成语言数组、取第一个；
 /// Chrome 会把这个位置参数当网址，但因为含 `<` 是无效网址，会被跳过，不会多开标签页。
 public struct LaunchPlan: Sendable, Equatable {
@@ -26,13 +28,12 @@ public struct LaunchPlan: Sendable, Equatable {
             "--use-mock-keychain",
             "--no-first-run",
             "--no-default-browser-check",
+            "--restore-last-session",
         ]
         if let port = localProxyPort {
-            args += [
-                "--proxy-server=socks5://127.0.0.1:\(port)",
-                // 除了本地入口，一律不在本地做 DNS 解析
-                "--host-resolver-rules=MAP * ~NOTFOUND , EXCLUDE 127.0.0.1",
-            ]
+            // 不加 --host-resolver-rules：Chrome 把它列为"不受支持的参数"，会在窗口顶部弹警告条，也容易被识别。
+            // 也不需要它：SOCKS5 下域名总是交给代理解析；走代理的网址，预连接也会跳过本地 DNS 预解析。
+            args.append("--proxy-server=socks5://127.0.0.1:\(port)")
         }
         args += [
             "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",

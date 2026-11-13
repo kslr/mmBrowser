@@ -273,7 +273,6 @@ struct Launch: AsyncParsableCommand {
             case .checkingExit: print(L("cli.launch.progress.exit"))
             case .exitChecked(let e): print(L("cli.launch.exit \(e.summary)"))
             case .seeding: print(L("cli.launch.progress.seed"))
-            case .initializing: print(L("cli.launch.progress.initialize"))
             case .installingExtensions: print(L("cli.launch.progress.extensions"))
             case .warning(let w): print("  ⚠️ \(w)")
             case .startingChrome: print(L("cli.launch.progress.chrome"))

@@ -2893,22 +2893,6 @@
         }
       }
     },
-    "launch.stage.initializing" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "First-time setup"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "首次初始化"
-          }
-        }
-      }
-    },
     "launch.stage.installingExtensions" : {
       "localizations" : {
         "en" : {

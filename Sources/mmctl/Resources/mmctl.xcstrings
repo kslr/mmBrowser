@@ -715,23 +715,6 @@
         }
       }
     },
-    "cli.launch.progress.initialize" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "· First-time initialization (configuring session restore offline)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "· 首次初始化（离线设置启动时恢复会话）"
-          }
-        }
-      }
-    },
     "cli.launch.progress.proxy" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -5,7 +5,6 @@ public enum LaunchStage: Sendable {
     case startingProxy
     case checkingExit
     case exitChecked(ExitInfo)
-    case initializing
     case installingExtensions
     /// 不致命的问题（比如扩展没装好），启动会继续
     case warning(String)
@@ -74,10 +73,6 @@ public final class BrowserLauncher: Sendable {
             HeadlessChrome.recoverSessions(dir)  // 上次维护中途崩溃留下的会话备份
             let language = LanguageTag.resolve(profile.language, countryCode: exit.countryCode)
             try ProfileSeed.apply(profile: profile, language: language, userDataDir: dir)
-            if ProfileInitializer.needsInitialization(userDataDir: dir) {
-                progress?(.initializing)
-                try await ProfileInitializer.initialize(userDataDir: dir, chrome: chrome)
-            }
 
             // 扩展：同步预装列表；缺失或等待确认的，经由本环境的代理下载并启用
             try ExtensionManager.syncPreferences(ids: profile.extensionIds, userDataDir: dir)

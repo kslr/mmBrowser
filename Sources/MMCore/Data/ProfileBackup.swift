@@ -91,8 +91,6 @@ public enum ProfileBackup {
             let dst = store.paths.profileDir(saved.id)
             try? fm.removeItem(at: dst)
             try fm.moveItem(at: src, to: dst)
-            // Chrome 的配置签名和机器绑定，重新做一次首次初始化（恢复会话、扩展启用等）
-            try? fm.removeItem(at: dst.appendingPathComponent(ProfileInitializer.markerName))
         }
         // lastOpenedAt 保留：已经用过的环境，启动时恢复会话而不是重新打开启动页
         try store.db.write { db in
