@@ -12,7 +12,7 @@
 xcodebuild test -project mmBrowser.xcodeproj -scheme mmBrowser -destination 'platform=macOS'
 ```
 
-工程包含四个 target：`mmBrowser`（App）、`MMCore`（框架）、`mmctl`（命令行工具，构建时自动放进 `mmBrowser.app/Contents/MacOS/`）、`MMCoreTests`。源码目录是 Xcode 的同步文件夹，新增文件放进对应目录即可，不用改工程。App 的 Info.plist 字段在 target 的 Build Settings 里（`INFOPLIST_KEY_*`），版本号是 `MARKETING_VERSION`；图标在 `Sources/MMApp/Resources/Assets.xcassets`。
+工程包含四个 target：`mmBrowser`（App）、`MMCore`（框架）、`mmctl`（命令行工具，构建时自动放进 `mmBrowser.app/Contents/MacOS/`）、`MMCoreTests`。源码目录是 Xcode 的同步文件夹，新增文件放进对应目录即可，不用改工程。App 的 Info.plist 字段在 target 的 Build Settings 里（`INFOPLIST_KEY_*`），版本号是 `MARKETING_VERSION`；图标在 `Sources/MMApp/Resources/Assets.xcassets`，由 `swift scripts/make-icon.swift` 从原图 `design/icon-source.png` 生成：脚本按 macOS 标准网格重画底板，再把原图对齐放进去。换图标就替换原图再跑一次。
 
 主要视图文件底部有 `#Preview`，用的是 `AppModel.preview`：数据放在临时目录，演示数据和截图自检（`--snapshot`）一样，不会碰正式数据目录。
 
