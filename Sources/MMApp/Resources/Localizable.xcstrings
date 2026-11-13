@@ -5044,18 +5044,50 @@
         }
       }
     },
-    "settings.extensions.footer" : {
+    "settings.extensions.default" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "After adding, check it in a profile’s editor or in Batch Edit to preinstall it in those profiles."
+            "value" : "Default for new"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "添加后在环境的编辑表单或批量编辑里勾选，即可预装到对应环境。"
+            "value" : "新建默认"
+          }
+        }
+      }
+    },
+    "settings.extensions.default.help" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check this extension automatically for new profiles (single, batch, and CSV imports without an extensions column). Existing profiles are not changed."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "新建环境时自动勾选这个扩展（单个新建、批量新建、没有扩展列的 CSV 导入）。不影响已有环境。"
+          }
+        }
+      }
+    },
+    "settings.extensions.footer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Check an extension in a profile’s editor or in Batch Edit to preinstall it in those profiles. Extensions marked “Default for new” are checked automatically for new profiles."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "在环境的编辑表单或批量编辑里勾选，即可预装到对应环境。标为「新建默认」的扩展，新建环境时会自动勾选。"
           }
         }
       }

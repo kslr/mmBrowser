@@ -69,6 +69,7 @@ final class AppModel {
             let store = try Store(paths: paths)
             self.store = store
             startObserving(store)
+            seedBuiltinExtensions()
         } catch {
             setupError = L("alert.dataDirectory \(paths.root.path) \(error.localizedDescription)")
         }

@@ -63,6 +63,15 @@ struct SettingsView: View {
                         Spacer()
                         let used = model.profiles.filter { $0.extensionIds.contains(e.id) }.count
                         Text(L("common.profileCount \(used)")).foregroundStyle(.secondary)
+                        Toggle(L("settings.extensions.default"), isOn: Binding(
+                            get: { e.isDefault },
+                            set: { on in
+                                var lib = model.extensionLibrary
+                                if let i = lib.firstIndex(where: { $0.id == e.id }) { lib[i].isDefault = on }
+                                model.saveExtensionLibrary(lib)
+                            }))
+                            .toggleStyle(.checkbox)
+                            .help(L("settings.extensions.default.help"))
                         Button(role: .destructive) {
                             model.saveExtensionLibrary(model.extensionLibrary.filter { $0.id != e.id })
                         } label: { Image(systemName: "minus.circle") }

@@ -467,6 +467,7 @@ struct ProfileEditorView: View {
         switch target {
         case .new(let tag):
             draft = ProfileDraft(defaultLanguage: model.defaultLanguage, tags: tag.map { [$0] } ?? [])
+            draft.extensionIds = model.defaultExtensionIds
         case .edit(let id):
             if let p = model.fresh(id) ?? model.profile(id) {
                 original = p

@@ -7,6 +7,29 @@ import UniformTypeIdentifiers
 struct ExtensionEntry: Codable, Hashable, Identifiable {
     var id: String
     var name: String
+    /// 新建环境时默认勾选（单个新建、批量新建、没有扩展列的 CSV 导入）
+    var isDefault = false
+
+    init(id: String, name: String, isDefault: Bool = false) {
+        self.id = id
+        self.name = name
+        self.isDefault = isDefault
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        isDefault = try c.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
+    }
+
+    /// 内置的常用扩展，首次使用时放进扩展库（不默认勾选）。ID 已在 Chrome 应用商店核对过。
+    static let builtin: [ExtensionEntry] = [
+        ExtensionEntry(id: "ddkjiahejlhfcafbddmgiahcphecmpfh", name: "uBlock Origin Lite"),
+        ExtensionEntry(id: "nngceckbapebfimnlniiiahkandclblb", name: "Bitwarden"),
+        ExtensionEntry(id: "bhghoamapcdpbohphigoooaddinpkbai", name: "Authenticator"),
+        ExtensionEntry(id: "bpoadfkcbjbfhfodiogcnhhhpibjhbnh", name: "Immersive Translate"),
+    ]
 }
 
 /// 批量编辑：只改勾选了的字段。
@@ -220,8 +243,10 @@ extension AppModel {
         guard let store else { return }
         var failed: [(String, String)] = []
         var ok = 0
+        let defaults = defaultExtensionIds
         for row in rows {
-            let p = row.profile
+            var p = row.profile
+            if !row.hasExtensionsColumn { p.extensionIds = defaults }
             do {
                 try store.insert(p)
                 ok += 1
@@ -334,6 +359,20 @@ extension AppModel {
     func saveExtensionLibrary(_ list: [ExtensionEntry]) {
         try? store?.setSetting("extensionLibrary", list)
         extensionLibraryVersion += 1
+    }
+
+    /// 新建环境默认勾选的扩展。
+    var defaultExtensionIds: [String] {
+        extensionLibrary.filter(\.isDefault).map(\.id)
+    }
+
+    /// 把内置的常用扩展并入扩展库，只做一次（之后用户删掉的不会再加回来）。
+    func seedBuiltinExtensions() {
+        guard let store, (try? store.setting("extensionLibrarySeeded", as: Bool.self)) == nil else { return }
+        var lib = extensionLibrary
+        for e in ExtensionEntry.builtin where !lib.contains(where: { $0.id == e.id }) { lib.append(e) }
+        saveExtensionLibrary(lib)
+        try? store.setSetting("extensionLibrarySeeded", true)
     }
 
     /// 从各环境已安装的扩展里补全扩展库中缺失的名称。

@@ -115,6 +115,8 @@ public enum ProfileCSV {
     public struct Row: Sendable {
         public var profile: Profile
         public let lineNumber: Int
+        /// 文件里有没有扩展列。没有时由调用方套用默认扩展；有但为空表示明确不装。
+        public var hasExtensionsColumn = true
     }
 
     /// 解析 CSV。任何一行有错都会抛出（带行号），不做部分导入，避免导入一半。
@@ -191,7 +193,7 @@ public enum ProfileCSV {
             p.extensionIds = v(.extensions).split(whereSeparator: { $0 == "," || $0 == " " })
                 .map(String.init).filter(ExtensionID.isValid)
 
-            rows.append(Row(profile: p, lineNumber: line))
+            rows.append(Row(profile: p, lineNumber: line, hasExtensionsColumn: index[.extensions] != nil))
         }
         guard !rows.isEmpty else { throw ImportError.empty }
         return rows
