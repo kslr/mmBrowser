@@ -1329,22 +1329,6 @@
         }
       }
     },
-    "common.auto" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auto"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "自动"
-          }
-        }
-      }
-    },
     "common.bringToFront" : {
       "localizations" : {
         "en" : {
@@ -3081,22 +3065,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "出口"
-          }
-        }
-      }
-    },
-    "list.column.languageTimezone" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Language / Time Zone"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "语言 / 时区"
           }
         }
       }

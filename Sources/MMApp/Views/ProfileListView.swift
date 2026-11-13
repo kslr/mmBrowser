@@ -35,6 +35,8 @@ struct ProfileListView: View {
     @State private var sortOrder = [KeyPathComparator(\ProfileRow.seq)]
     @State private var confirmPurge: [String]?
     @State private var pendingCSV: [ProfileCSV.Row]?
+    /// 列的显示、顺序和宽度（右键表头调整），所有列表共用一份
+    @AppStorage("profileList.columns") private var columns = TableColumnCustomization<ProfileRow>()
 
     private var isTrash: Bool { scope == .trash }
 
@@ -53,24 +55,32 @@ struct ProfileListView: View {
     }
 
     var body: some View {
-        Table(rows, selection: $selection, sortOrder: $sortOrder) {
+        // 只有名称列不设最大宽度，窗口多出来的空间都给它
+        Table(rows, selection: $selection, sortOrder: $sortOrder, columnCustomization: $columns) {
             TableColumn("#", value: \.seq) { r in
                 Text(verbatim: "\(r.seq)").monospacedDigit().foregroundStyle(.secondary)
             }
             .width(min: 30, ideal: 36, max: 56)
+            .customizationID("seq")
 
             TableColumn(L("list.column.name"), value: \.name) { r in
                 HStack(spacing: 6) {
                     Circle().fill(Color(hex: r.profile.effectiveThemeColor)).frame(width: 8, height: 8)
-                    Text(r.name).lineLimit(1)
+                    Text(r.name).lineLimit(1).help(r.name)
+                    StatusIcon(state: model.state(of: r.id), error: model.lastError[r.id])
                 }
             }
-            .width(min: 90, ideal: 125)
+            .width(min: 120, ideal: 220)
+            .customizationID("name")
+            .disabledCustomizationBehavior(.visibility)
 
+            // 状态已经以图标显示在名称后面，这一列默认隐藏，需要看启动阶段等文字时再打开
             TableColumn(L("list.column.status")) { r in
                 StatusBadge(state: model.state(of: r.id), error: model.lastError[r.id])
             }
-            .width(min: 70, ideal: 90)
+            .width(min: 70, ideal: 90, max: 140)
+            .customizationID("status")
+            .defaultVisibility(.hidden)
 
             TableColumn(L("list.column.tags"), value: \.tagsText) { r in
                 Text(r.tagsText.isEmpty ? "—" : r.tagsText)
@@ -78,7 +88,8 @@ struct ProfileListView: View {
                     .foregroundStyle(r.tagsText.isEmpty ? .tertiary : .primary)
                     .help(r.tagsText)
             }
-            .width(min: 60, ideal: 120)
+            .width(min: 60, ideal: 100, max: 200)
+            .customizationID("tags")
 
             TableColumn(L("list.column.proxy")) { r in
                 HStack(spacing: 5) {
@@ -94,7 +105,8 @@ struct ProfileListView: View {
                 }
                 .help(r.profile.proxy?.displayString ?? "")
             }
-            .width(min: 100, ideal: 155)
+            .width(min: 90, ideal: 140, max: 220)
+            .customizationID("proxy")
 
             TableColumn(L("list.column.exit"), value: \.exitText) { r in
                 let shared = model.sharedExitIP(r.profile)
@@ -102,28 +114,26 @@ struct ProfileListView: View {
                     if model.checking.contains(r.id) { ProgressView().controlSize(.mini) }
                     if !shared.isEmpty { Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange) }
                     Text(r.exitText.isEmpty ? L("common.notChecked") : r.exitText)
+                        .lineLimit(1).truncationMode(.middle)  // IPv6 很长，首尾都留着才好区分
                         .foregroundStyle(r.exitText.isEmpty ? AnyShapeStyle(.tertiary) : shared.isEmpty ? AnyShapeStyle(.primary) : AnyShapeStyle(.orange))
                 }
                 .help(exitHelp(r.profile, shared: shared))
             }
-            .width(min: 80, ideal: 115)
-
-            TableColumn(L("list.column.languageTimezone")) { r in
-                Text(verbatim: "\(r.profile.language == LanguageTag.auto ? L("common.auto") : r.profile.language) · \(r.profile.timezone ?? L("common.auto"))")
-                    .lineLimit(1).foregroundStyle(.secondary)
-            }
-            .width(min: 80, ideal: 125)
+            .width(min: 90, ideal: 140, max: 240)
+            .customizationID("exit")
 
             TableColumn(L("list.column.lastOpened"), value: \.lastOpened) { r in
                 Text(r.profile.lastOpenedAt.map { $0.formatted(.relative(presentation: .named)) } ?? L("list.never"))
                     .foregroundStyle(.secondary)
             }
-            .width(min: 60, ideal: 75)
+            .width(min: 60, ideal: 75, max: 110)
+            .customizationID("lastOpened")
 
             TableColumn(L("list.column.notes")) { r in
                 Text(r.profile.notes).lineLimit(1).foregroundStyle(.secondary).help(r.profile.notes)
             }
-            .width(min: 60, ideal: 70)
+            .width(min: 60, ideal: 100, max: 400)
+            .customizationID("notes")
         }
         .contextMenu(forSelectionType: String.self) { ids in
             menu(for: Array(ids))
@@ -346,16 +356,53 @@ struct StatusBadge: View {
             }
         }
         .lineLimit(1)
-        .help(helpText)
+        .help(Self.detail(state, error: error))
     }
 
-    private var helpText: String {
+    /// 状态的简短文字
+    static func label(_ state: RunState, error: String?) -> String {
+        switch state {
+        case .idle: error != nil ? L("common.failed") : L("status.idle")
+        case .launching(let stage): stage
+        case .running: L("status.running")
+        case .orphan: L("status.orphan")
+        case .stopping: L("status.stopping")
+        }
+    }
+
+    /// 悬停提示里的详细说明
+    static func detail(_ state: RunState, error: String?) -> String {
         switch state {
         case .idle: error ?? ""
         case .running(let r): L("status.running.help \(Int(r.pid)) \(Int(r.proxy?.port ?? 0)) \(r.timezone)")
         case .orphan(let pid): L("status.orphan.help \(Int(pid))")
         default: ""
         }
+    }
+}
+
+/// 名称后面的紧凑状态图标，未运行时不显示；文字说明放在悬停提示里。
+struct StatusIcon: View {
+    let state: RunState
+    let error: String?
+
+    var body: some View {
+        Group {
+            switch state {
+            case .idle:
+                if error != nil { Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red) }
+            case .launching, .stopping:
+                ProgressView().controlSize(.mini)
+            case .running:
+                Image(systemName: "play.circle.fill").foregroundStyle(.green)
+            case .orphan:
+                Image(systemName: "exclamationmark.circle.fill").foregroundStyle(.orange)
+            }
+        }
+        .font(.caption)
+        .help([StatusBadge.label(state, error: error), StatusBadge.detail(state, error: error)]
+            .filter { !$0.isEmpty }.joined(separator: "\n"))
+        .accessibilityLabel(StatusBadge.label(state, error: error))
     }
 }
 
