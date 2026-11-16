@@ -167,7 +167,6 @@ final class AppModel {
 
     func state(of id: String) -> RunState { states[id] ?? .idle }
 
-    var runningCount: Int { states.values.filter { if case .running = $0 { true } else { false } }.count }
 
     func profiles(in item: SidebarItem) -> [Profile] {
         switch item {

@@ -25,13 +25,6 @@ struct MMBrowserApp: App {
             SettingsView()
                 .environment(model)
         }
-
-        MenuBarExtra {
-            MenuBarContent()
-                .environment(model)
-        } label: {
-            Image(systemName: model.runningCount > 0 ? "globe.americas.fill" : "globe.americas")
-        }
     }
 }
 
@@ -63,8 +56,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         MainActor.assumeIsolated { AppModel.shared.refreshFromDisk() }
     }
 
-    /// 关掉主窗口后继续留在菜单栏（代理入口要一直工作）。
+    /// 关掉主窗口后不退出（代理入口要一直工作），点 Dock 图标重新打开主窗口。
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    @MainActor func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        DockMenu.make(AppModel.shared)
+    }
 
     /// 有环境在运行时，退出前确认：退出会让这些环境断网。
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
