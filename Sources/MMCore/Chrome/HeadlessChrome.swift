@@ -81,7 +81,7 @@ final class HeadlessChrome: @unchecked Sendable {
 
         let p = Process()
         p.executableURL = chrome.executable
-        p.arguments = [
+        p.arguments = ChromeFlags.withDisabledFeatures([
             "--headless=new",
             "--user-data-dir=\(userDataDir.path)",
             "--use-mock-keychain",
@@ -93,8 +93,7 @@ final class HeadlessChrome: @unchecked Sendable {
             "--disable-quic",
             "--remote-debugging-address=127.0.0.1",
             "--remote-debugging-port=0",
-            "about:blank",
-        ]
+        ]) + ["about:blank"]
         p.standardOutput = FileHandle.nullDevice
         p.standardError = FileHandle.nullDevice
         p.standardInput = FileHandle.nullDevice

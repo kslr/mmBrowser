@@ -44,11 +44,42 @@ public struct LaunchPlan: Sendable, Equatable {
         if let w = profile.windowWidth, let h = profile.windowHeight {
             args.append("--window-size=\(w),\(h)")
         }
-        args += profile.extraArgs
+        args += ChromeFlags.withDisabledFeatures(profile.extraArgs)
         args += ["-AppleLanguages", "(\"\(language)\", \"<\")"]
         if let checkPageURL { args.append(checkPageURL) }
         if openStartURLs { args += profile.startURLs.filter { $0 != checkPageURL } }
         return LaunchPlan(arguments: args, environment: ["TZ": timezone])
+    }
+}
+
+/// 正式启动和无界面维护都要加的 Chrome 参数。
+public enum ChromeFlags {
+    /// 总是关掉的功能：
+    /// - MacAppCodeSignClone：Chrome 启动时会用硬链接把自己的 app 包克隆到临时目录（防止运行中被更新替换）。
+    ///   由本程序启动时，macOS 的「App 管理」把这当成本程序在修改别的 App，拒绝并弹出
+    ///  「mmBrowser 已被阻止修改你 Mac 上的 App」。关掉后只少了这层防护：Chrome 在运行中被更新时，
+    ///   和以前一样需要重开。
+    static let disabledFeatures = ["MacAppCodeSignClone"]
+
+    /// 在 args 里合并出唯一一个 `--disable-features`：Chrome 只认最后一个，分开写会互相覆盖。
+    /// 用户自己写的会保留，放在原来第一次出现的位置。
+    public static func withDisabledFeatures(_ args: [String]) -> [String] {
+        let prefix = "--disable-features="
+        var features: [String] = []
+        var out: [String] = []
+        var slot: Int?
+        for a in args {
+            if a.hasPrefix(prefix) {
+                features += a.dropFirst(prefix.count).split(separator: ",").map(String.init)
+                if slot == nil { slot = out.count; out.append("") }
+            } else {
+                out.append(a)
+            }
+        }
+        for f in disabledFeatures where !features.contains(f) { features.append(f) }
+        let merged = prefix + features.filter { !$0.isEmpty }.joined(separator: ",")
+        if let slot { out[slot] = merged } else { out.append(merged) }
+        return out
     }
 }
 

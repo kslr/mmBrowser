@@ -30,6 +30,7 @@ struct ChromeTests {
         #expect(args.contains("--accept-lang=ja-JP,ja"))
         #expect(args.contains("--window-size=1440,900"))
         #expect(args.contains("--force-dark-mode"))
+        #expect(args.contains("--disable-features=MacAppCodeSignClone"))
         #expect(!args.contains("--no-startup-window"))
         #expect(!args.contains("-AppleLocale"))
         #expect(args.suffix(5) == ["-AppleLanguages", "(\"ja-JP\", \"<\")", "https://check.example/",
@@ -42,6 +43,22 @@ struct ChromeTests {
         let none = LaunchPlan.make(profile: sampleProfile(), language: "ja-JP", userDataDir: dir, localProxyPort: 40000,
                                    timezone: "Asia/Tokyo", checkPageURL: nil, openStartURLs: false)
         #expect(none.arguments.suffix(2) == ["-AppleLanguages", "(\"ja-JP\", \"<\")"])
+    }
+
+    @Test("--disable-features 合并成一个（Chrome 只认最后一个），用户自己关的功能保留")
+    func disabledFeaturesMerged() {
+        #expect(ChromeFlags.withDisabledFeatures(["--a"]) == ["--a", "--disable-features=MacAppCodeSignClone"])
+        #expect(ChromeFlags.withDisabledFeatures(["--a", "--disable-features=X,Y", "--b", "--disable-features=Z"])
+                == ["--a", "--disable-features=X,Y,Z,MacAppCodeSignClone", "--b"])
+        #expect(ChromeFlags.withDisabledFeatures(["--disable-features=MacAppCodeSignClone"])
+                == ["--disable-features=MacAppCodeSignClone"])
+        #expect(ChromeFlags.withDisabledFeatures(["--disable-features="]) == ["--disable-features=MacAppCodeSignClone"])
+
+        var p = sampleProfile()
+        p.extraArgs = ["--disable-features=Translate"]
+        let args = LaunchPlan.make(profile: p, language: "ja-JP", userDataDir: URL(fileURLWithPath: "/tmp/x"),
+                                   localProxyPort: 1, timezone: "UTC", checkPageURL: nil, openStartURLs: false).arguments
+        #expect(args.filter { $0.hasPrefix("--disable-features") } == ["--disable-features=Translate,MacAppCodeSignClone"])
     }
 
     @Test("非法语言代码回落到 en-US，避免拼坏 plist")
