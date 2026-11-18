@@ -13,7 +13,6 @@ struct ExtensionEntry: Codable, Hashable, Identifiable {
         ExtensionEntry(id: "ddkjiahejlhfcafbddmgiahcphecmpfh", name: "uBlock Origin Lite"),
         ExtensionEntry(id: "nngceckbapebfimnlniiiahkandclblb", name: "Bitwarden"),
         ExtensionEntry(id: "bhghoamapcdpbohphigoooaddinpkbai", name: "Authenticator"),
-        ExtensionEntry(id: "bpoadfkcbjbfhfodiogcnhhhpibjhbnh", name: "Immersive Translate"),
     ]
 }
 
