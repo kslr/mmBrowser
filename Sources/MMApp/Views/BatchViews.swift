@@ -146,20 +146,7 @@ struct BatchCreateView: View {
                         ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
                     }
                     TextField(L("editor.notes"), text: $draft.notes, prompt: Text(L("common.optional")))
-                }
-                if !model.extensionLibrary.isEmpty {
-                    Section(L("batchEdit.section.extensions")) {
-                        ForEach(model.extensionLibrary) { e in
-                            Toggle(isOn: Binding(
-                                get: { draft.extensionIds.contains(e.id) },
-                                set: { on in
-                                    draft.extensionIds.removeAll { $0 == e.id }
-                                    if on { draft.extensionIds.append(e.id) }
-                                })) {
-                                Text(L("editor.extension \(e.name.isEmpty ? String(e.id.prefix(12)) + "…" : e.name)")).help(e.id)
-                            }
-                        }
-                    }
+                    NewProfileExtensionsRow()
                 }
             }
             .formStyle(.grouped)
@@ -169,7 +156,7 @@ struct BatchCreateView: View {
         .frame(width: 600, height: 700)
         .onAppear {
             draft = ProfileDraft(defaultLanguage: model.defaultLanguage, tags: tag.map { [$0] } ?? [])
-            draft.extensionIds = model.defaultExtensionIds
+            draft.extensionIds = model.newProfileExtensionIds
             language = model.defaultLanguage
         }
     }

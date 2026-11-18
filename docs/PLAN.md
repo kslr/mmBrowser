@@ -204,7 +204,7 @@
 ### P4 进阶
 - **Cookie 导入导出**：直接读写环境的 `Default/Cookies`（环境必须关闭），不需要 CDP。兼容 Cookie-Editor / EditThisCookie / Puppeteer 的 JSON。实测：导出 Chrome 自己写的 Cookie 正确；导入的 Cookie 被 Chrome 在请求里带上。
 - **环境备份/迁移**：`.mmprofile`（zip：`profile.json` + 不含缓存的浏览器数据）。导入为新环境；代理被占用时去掉代理并提示；导入后重新做首次初始化（Chrome 的配置签名和机器绑定）。
-- **扩展预装**：设置里维护扩展库（粘贴应用商店链接），环境里勾选。启动前写入 `External Extensions/<id>.json`；缺失或"等待确认"的扩展，用无界面 Chrome 经由该环境自己的代理下载并通过 `chrome://extensions` 的 management 接口启用；取消勾选后下次启动自动卸载。用户自己停用的扩展不会被重新启用。实测：uBlock Origin Lite、Dark Reader 安装、启用、卸载都正常。
+- **扩展预装**：设置里维护扩展库（粘贴应用商店链接），新建环境自动装上扩展库里的全部扩展，之后可在环境里单独取消勾选。启动前写入 `External Extensions/<id>.json`；缺失或"等待确认"的扩展，用无界面 Chrome 经由该环境自己的代理下载并通过 `chrome://extensions` 的 management 接口启用；取消勾选后下次启动自动卸载。用户自己停用的扩展不会被重新启用。实测：uBlock Origin Lite、Dark Reader 安装、启用、卸载都正常。
 - **维护时保护会话**：无界面维护前把 `Sessions` 挪开、结束后放回，既不在后台加载用户的标签页，也不会覆盖会话；中途崩溃时下次启动自动恢复。
 - **维护时保护窗口大小**：无界面 Chrome 退出时会把 800×600 虚拟屏幕上的窗口位置写进 `browser.window_placement`，维护前记下原值、结束后放回（原来没有就删掉），正式打开时窗口不会变小。
 - ~~窗口排列~~：已移除（需要辅助功能权限，不值得为它额外授权）。

@@ -436,24 +436,29 @@ struct ProfileEditorView: View {
     @ViewBuilder
     private var extensionRows: some View {
         let lib = model.extensionLibrary
-        if lib.isEmpty && draft.extensionIds.isEmpty {
-            LabeledContent(L("editor.extensions")) {
-                Text(L("editor.extensions.empty")).foregroundStyle(.secondary)
+        if isNew {
+            // 新建时不用挑：扩展库里的都会装上，建好后可在编辑里单独取消
+            NewProfileExtensionsRow()
+        } else {
+            if lib.isEmpty && draft.extensionIds.isEmpty {
+                LabeledContent(L("editor.extensions")) {
+                    Text(L("editor.extensions.empty")).foregroundStyle(.secondary)
+                }
             }
-        }
-        ForEach(lib) { e in
-            Toggle(isOn: Binding(
-                get: { draft.extensionIds.contains(e.id) },
-                set: { on in
-                    draft.extensionIds.removeAll { $0 == e.id }
-                    if on { draft.extensionIds.append(e.id) }
-                })) {
-                Text(L("editor.extension \(e.name.isEmpty ? String(e.id.prefix(12)) + "…" : e.name)")).help(e.id)
+            ForEach(lib) { e in
+                Toggle(isOn: Binding(
+                    get: { draft.extensionIds.contains(e.id) },
+                    set: { on in
+                        draft.extensionIds.removeAll { $0 == e.id }
+                        if on { draft.extensionIds.append(e.id) }
+                    })) {
+                    Text(L("editor.extension \(e.name.isEmpty ? String(e.id.prefix(12)) + "…" : e.name)")).help(e.id)
+                }
             }
-        }
-        ForEach(draft.extensionIds.filter { id in !lib.contains { $0.id == id } }, id: \.self) { id in
-            Toggle(isOn: Binding(get: { true }, set: { if !$0 { draft.extensionIds.removeAll { $0 == id } } })) {
-                Text(L("editor.extension \(String(id.prefix(12)) + "…")")).help(id)
+            ForEach(draft.extensionIds.filter { id in !lib.contains { $0.id == id } }, id: \.self) { id in
+                Toggle(isOn: Binding(get: { true }, set: { if !$0 { draft.extensionIds.removeAll { $0 == id } } })) {
+                    Text(L("editor.extension \(String(id.prefix(12)) + "…")")).help(id)
+                }
             }
         }
     }
@@ -467,7 +472,7 @@ struct ProfileEditorView: View {
         switch target {
         case .new(let tag):
             draft = ProfileDraft(defaultLanguage: model.defaultLanguage, tags: tag.map { [$0] } ?? [])
-            draft.extensionIds = model.defaultExtensionIds
+            draft.extensionIds = model.newProfileExtensionIds
         case .edit(let id):
             if let p = model.fresh(id) ?? model.profile(id) {
                 original = p
@@ -519,6 +524,24 @@ struct ProfileEditorView: View {
         } catch {
             self.error = error.localizedDescription
         }
+    }
+}
+
+/// 新建表单里的「预装扩展」：只展示扩展库里会装上的扩展，不用逐个勾选。
+struct NewProfileExtensionsRow: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let lib = model.extensionLibrary
+        LabeledContent(L("editor.extensions")) {
+            if lib.isEmpty {
+                Text(L("editor.extensions.empty")).foregroundStyle(.secondary)
+            } else {
+                Text(lib.map { model.extensionName($0.id) }.formatted(.list(type: .and, width: .narrow)))
+                    .foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+            }
+        }
+        .help(L("editor.extensions.new.help"))
     }
 }
 
