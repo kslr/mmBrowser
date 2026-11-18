@@ -17,24 +17,41 @@ final class HeadlessChrome: @unchecked Sendable {
         self.savedWindowPlacement = savedWindowPlacement
     }
 
-    static func sessionsDir(_ userDataDir: URL) -> URL { userDataDir.appendingPathComponent("Default/Sessions") }
-    static func savedSessionsDir(_ userDataDir: URL) -> URL { userDataDir.appendingPathComponent("Default/Sessions.mm-saved") }
+    /// 会话目录。新版 Chrome 除了 Sessions 还会写一份加密的 Sessions_Encrypted，恢复会话时也会读它；
+    /// 只处理 Sessions 的话，维护时扩展打开的引导页（chrome.runtime.onInstalled）会被正式浏览器恢复出来。
+    static let sessionDirNames = ["Sessions", "Sessions_Encrypted"]
+
+    /// 每个会话目录和它在维护期间的备份位置。
+    static func sessionDirs(_ userDataDir: URL) -> [(live: URL, saved: URL)] {
+        let base = userDataDir.appendingPathComponent("Default", isDirectory: true)
+        return sessionDirNames.map {
+            (base.appendingPathComponent($0, isDirectory: true), base.appendingPathComponent("\($0).mm-saved", isDirectory: true))
+        }
+    }
 
     /// 维护期间把用户的会话挪开：既不让无界面 Chrome 恢复（并在后台加载）用户的标签页，也不让维护过程覆盖它。
+    /// 原本没有的目录也放一个空备份，这样放回时一律用备份覆盖，维护产生的会话（哪怕中途崩溃）都会被丢掉。
     static func stashSessions(_ userDataDir: URL) throws {
         recoverSessions(userDataDir)
         let fm = FileManager.default
-        if fm.fileExists(atPath: sessionsDir(userDataDir).path) {
-            try fm.moveItem(at: sessionsDir(userDataDir), to: savedSessionsDir(userDataDir))
+        try fm.createDirectory(at: userDataDir.appendingPathComponent("Default", isDirectory: true),
+                               withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        for (live, saved) in sessionDirs(userDataDir) {
+            if fm.fileExists(atPath: live.path) {
+                try fm.moveItem(at: live, to: saved)
+            } else {
+                try fm.createDirectory(at: saved, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+            }
         }
     }
 
     /// 丢弃维护产生的会话，放回用户的会话。也用于应用中途崩溃后的恢复（启动前都会调用）。
     public static func recoverSessions(_ userDataDir: URL) {
         let fm = FileManager.default
-        guard fm.fileExists(atPath: savedSessionsDir(userDataDir).path) else { return }
-        try? fm.removeItem(at: sessionsDir(userDataDir))
-        try? fm.moveItem(at: savedSessionsDir(userDataDir), to: sessionsDir(userDataDir))
+        for (live, saved) in sessionDirs(userDataDir) where fm.fileExists(atPath: saved.path) {
+            try? fm.removeItem(at: live)
+            try? fm.moveItem(at: saved, to: live)
+        }
     }
 
     static let windowPlacementKey = "browser.window_placement"
@@ -111,11 +128,7 @@ final class HeadlessChrome: @unchecked Sendable {
             p.waitUntilExit()
             try? fm.removeItem(at: portFile)
             restoreWindowPlacement(placement, userDataDir: userDataDir)
-            if fm.fileExists(atPath: savedSessionsDir(userDataDir).path) {
-                recoverSessions(userDataDir)
-            } else {
-                try? fm.removeItem(at: sessionsDir(userDataDir))  // 原本没有会话：丢掉维护产生的
-            }
+            recoverSessions(userDataDir)
             throw error
         }
     }
@@ -157,10 +170,6 @@ final class HeadlessChrome: @unchecked Sendable {
         let fm = FileManager.default
         try? fm.removeItem(at: portFile)
         Self.restoreWindowPlacement(savedWindowPlacement, userDataDir: userDataDir)
-        if fm.fileExists(atPath: Self.savedSessionsDir(userDataDir).path) {
-            Self.recoverSessions(userDataDir)
-        } else {
-            try? fm.removeItem(at: Self.sessionsDir(userDataDir))  // 原本没有会话：丢掉维护产生的
-        }
+        Self.recoverSessions(userDataDir)
     }
 }

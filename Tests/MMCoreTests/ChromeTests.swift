@@ -133,6 +133,40 @@ struct ChromeTests {
         prefs = try ProfileSeed.readJSON(prefsURL)
         #expect((ProfileSeed.get(prefs, HeadlessChrome.windowPlacementKey) as? [String: Any])?["right"] as? Int == 1060)
     }
+
+    @Test("无界面维护产生的会话（Sessions 和 Sessions_Encrypted）都会被丢掉，用户原来的会话原样放回")
+    func maintenanceSessionsDiscarded() throws {
+        let fm = FileManager.default
+        let dir = fm.temporaryDirectory.appendingPathComponent("mmsess-\(UUID().uuidString)")
+        defer { try? fm.removeItem(at: dir) }
+        let plain = dir.appendingPathComponent("Default/Sessions")
+        let encrypted = dir.appendingPathComponent("Default/Sessions_Encrypted")
+        func writeSession(_ d: URL, _ name: String) throws {
+            try fm.createDirectory(at: d, withIntermediateDirectories: true)
+            try Data(name.utf8).write(to: d.appendingPathComponent(name))
+        }
+        func names(_ d: URL) -> [String] { ((try? fm.contentsOfDirectory(atPath: d.path)) ?? []).sorted() }
+
+        // 新环境：原本没有会话，维护时扩展打开了引导页
+        HeadlessChrome.recoverSessions(dir)
+        try HeadlessChrome.stashSessions(dir)
+        try writeSession(plain, "Session_headless")
+        try writeSession(encrypted, "Session_headless")
+        HeadlessChrome.recoverSessions(dir)
+        #expect(names(plain).isEmpty)
+        #expect(names(encrypted).isEmpty)
+
+        // 已有会话：维护期间挪开，之后原样放回；中途崩溃时下次启动前的 recoverSessions 也会放回
+        try writeSession(plain, "Session_user")
+        try writeSession(encrypted, "Session_user")
+        try HeadlessChrome.stashSessions(dir)
+        #expect(names(plain).isEmpty)
+        try writeSession(plain, "Session_headless")
+        try writeSession(encrypted, "Session_headless")
+        HeadlessChrome.recoverSessions(dir)
+        #expect(names(plain) == ["Session_user"])
+        #expect(names(encrypted) == ["Session_user"])
+    }
 }
 
 @Suite("会话文件")
