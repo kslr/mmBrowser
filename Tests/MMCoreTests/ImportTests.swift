@@ -43,7 +43,6 @@ struct ImportTests {
         p.themeColor = "#112233"
         p.geolocation = .ask
         p.extraArgs = ["--force-dark-mode"]
-        p.extensionIds = ["ddkjiahejlhfcafbddmgiahcphecmpfh"]
         p.proxyExpiresAt = ProfileCSV.parseDate("2026-12-31")
         let csv = ProfileCSV.export([p])
         let rows = try ProfileCSV.parseImport(csv)
@@ -52,7 +51,7 @@ struct ImportTests {
         #expect(q.name == p.name && q.proxy == p.proxy && q.language == p.language && q.timezone == p.timezone)
         #expect(q.tags == p.tags && q.notes == p.notes)
         #expect(q.windowSize == p.windowSize && q.themeColor == "#112233" && q.geolocation == .ask)
-        #expect(q.extraArgs == p.extraArgs && q.extensionIds == p.extensionIds)
+        #expect(q.extraArgs == p.extraArgs)
         #expect(ProfileCSV.formatDate(q.proxyExpiresAt!) == "2026-12-31")
     }
 
@@ -66,11 +65,6 @@ struct ImportTests {
         #expect(throws: ImportError.badLine(3, L("error.csv.timezone \("Mars/Base")"))) { try ProfileCSV.parseImport("名称,时区\nA,UTC\nB,Mars/Base\n") }
         #expect(try ProfileCSV.parseImport("name,window\nA,1280×800\n")[0].profile.windowSize == WindowSize(width: 1280, height: 800))
         #expect(throws: ImportError.badLine(2, L("error.csv.window"))) { try ProfileCSV.parseImport("name,window\nA,300x200\n") }
-    }
-
-    @Test func extensionID() {
-        #expect(ExtensionID.extract(from: "https://chromewebstore.google.com/detail/ublock-origin-lite/ddkjiahejlhfcafbddmgiahcphecmpfh?hl=zh") == "ddkjiahejlhfcafbddmgiahcphecmpfh")
-        #expect(ExtensionID.extract(from: "abc") == nil)
     }
 
     @Test("复制环境：连代理一起复制；回收站按天数清理")

@@ -25,8 +25,6 @@ struct BatchEdit {
     var geolocation = GeolocationPolicy.block
     var setWindow = false
     var window: WindowSize?        // nil = 默认
-    var addExtensions: [String] = []
-    var removeExtensions: [String] = []
     var setExpiry = false
     var expiry: Date?
 
@@ -37,8 +35,6 @@ struct BatchEdit {
         if setTimezone { p.timezone = timezone }
         if setGeolocation { p.geolocation = geolocation }
         if setWindow { p.windowSize = window }
-        p.extensionIds += addExtensions.filter { !p.extensionIds.contains($0) }
-        p.extensionIds.removeAll { removeExtensions.contains($0) }
         if setExpiry { p.proxyExpiresAt = expiry }
     }
 }

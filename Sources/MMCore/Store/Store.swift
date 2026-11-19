@@ -153,6 +153,11 @@ public final class Store: Sendable {
             try db.execute(sql: "ALTER TABLE profile DROP COLUMN startURLs")
             try db.execute(sql: "ALTER TABLE profile DROP COLUMN alwaysOpenStartURLs")
         }
+        // 不再预装扩展（已经装进各环境的扩展留在环境目录里，不受影响）
+        m.registerMigration("v7") { db in
+            try db.execute(sql: "ALTER TABLE profile DROP COLUMN extensionIds")
+            try db.execute(sql: "DELETE FROM appSetting WHERE key IN ('extensionLibrary', 'extensionLibrarySeeded')")
+        }
         return m
     }
 

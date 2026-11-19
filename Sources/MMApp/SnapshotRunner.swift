@@ -147,7 +147,6 @@ enum SnapshotRunner {
         var e = BatchEdit()
         e.addTags = ["自检标签"]
         e.setLanguage = true; e.language = "ja-JP"
-        e.addExtensions = []
         model.batchEdit(ids, e)
         check("批量编辑：标签和语言", ids.allSatisfy { model.fresh($0)?.tags.contains("自检标签") == true && model.fresh($0)?.language == "ja-JP" })
 
@@ -210,11 +209,6 @@ enum SnapshotRunner {
         for (p, d) in zip(all, offsets) {
             try? store.updateMany([p.id]) { $0.proxyExpiresAt = Date().addingTimeInterval(d * 86_400) }
         }
-        model.saveExtensionLibrary([
-            ExtensionEntry(id: "ddkjiahejlhfcafbddmgiahcphecmpfh", name: "uBlock Origin Lite"),
-            ExtensionEntry(id: "eimadpbcbfnmbkopoojfekhnkhdbieeh", name: ""),
-        ])
-        if let first = all.first { try? store.updateMany([first.id]) { $0.extensionIds = ["ddkjiahejlhfcafbddmgiahcphecmpfh"] } }
         model.refreshFromDisk()
     }
 

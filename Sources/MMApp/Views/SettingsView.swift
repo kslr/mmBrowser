@@ -9,8 +9,6 @@ struct SettingsView: View {
     @State private var customCheckURL = ""
     @AppStorage(AppModel.maxRunningKey) private var maxRunning = 10
     @AppStorage(AppModel.trashDaysKey) private var trashDays = 30
-    @State private var newExtension = ""
-    @State private var extError: String?
 
     var body: some View {
         Form {
@@ -52,34 +50,6 @@ struct SettingsView: View {
                 Text(L("settings.checkPage.footer"))
                     .font(.caption).foregroundStyle(.secondary)
             }
-            Section {
-                ForEach(model.extensionLibrary) { e in
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text(e.name.isEmpty ? L("settings.extensions.pendingName") : e.name)
-                            Text(e.id).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
-                        }
-                        Spacer()
-                        let used = model.profiles.filter { $0.extensionIds.contains(e.id) }.count
-                        Text(L("common.profileCount \(used)")).foregroundStyle(.secondary)
-                        Button(role: .destructive) {
-                            model.saveExtensionLibrary(model.extensionLibrary.filter { $0.id != e.id })
-                        } label: { Image(systemName: "minus.circle") }
-                        .buttonStyle(.borderless)
-                        .help(L("settings.extensions.remove.help"))
-                    }
-                }
-                HStack {
-                    TextField(L("settings.extensions.add"), text: $newExtension, prompt: Text(L("settings.extensions.add.prompt")))
-                        .onSubmit(addExtension)
-                    Button(L("settings.extensions.addButton"), action: addExtension).disabled(newExtension.isEmpty)
-                }
-                if let extError { Text(extError).font(.caption).foregroundStyle(.red) }
-            } header: {
-                Text(L("settings.extensions.header"))
-            } footer: {
-                Text(L("settings.extensions.footer")).font(.caption).foregroundStyle(.secondary)
-            }
             Section(L("settings.section.data")) {
                 LabeledContent(L("settings.data.folder")) {
                     HStack {
@@ -114,26 +84,6 @@ struct SettingsView: View {
             page = .custom(t.contains("://") ? t : "https://\(t)")
         }
         try? model.store?.setCheckPage(page)
-    }
-
-    private func addExtension() {
-        guard let id = ExtensionID.extract(from: newExtension) else {
-            extError = L("settings.extensions.invalid")
-            return
-        }
-        var lib = model.extensionLibrary
-        if !lib.contains(where: { $0.id == id }) {
-            // 应用商店链接里通常带着扩展名（/detail/<名称>/<id>）
-            var name = ""
-            if let url = URL(string: newExtension), let i = url.pathComponents.firstIndex(of: id), i > 0 {
-                let slug = url.pathComponents[i - 1]
-                if slug != "detail" { name = slug.replacingOccurrences(of: "-", with: " ").capitalized }
-            }
-            lib.append(ExtensionEntry(id: id, name: name))
-            model.saveExtensionLibrary(lib)
-        }
-        newExtension = ""
-        extError = nil
     }
 
     private func pickChrome() {

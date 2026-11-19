@@ -103,7 +103,7 @@ struct CheckPageTests {
 @Suite("迁移")
 struct MigrationTests {
     /// 早期建的库：v1 没有 alwaysOpenStartURLs 列（与实际出过问题的库结构一致）。
-    @Test("旧库（缺 alwaysOpenStartURLs 列、带分组、带启动页）能升级到最新，数据完整、能正常写入")
+    @Test("旧库（缺 alwaysOpenStartURLs 列、带分组、带启动页和扩展）能升级到最新，数据完整、能正常写入")
     func upgradeOldDatabase() throws {
         let fm = FileManager.default
         let root = fm.temporaryDirectory.appendingPathComponent("mmmig-\(UUID().uuidString)")
@@ -142,7 +142,7 @@ struct MigrationTests {
         let tables = try store.db.read { try String.fetchAll($0, sql: "SELECT name FROM sqlite_master WHERE type = 'table'") }
         #expect(!tables.contains("profileGroup"))
         let columns = try store.db.read { try $0.columns(in: "profile").map(\.name) }
-        #expect(!columns.contains("groupId") && !columns.contains("startURLs") && !columns.contains("alwaysOpenStartURLs"))
+        #expect(Set(columns).isDisjoint(with: ["groupId", "startURLs", "alwaysOpenStartURLs", "extensionIds"]))
         // v5 取消了代理唯一约束
         try store.insert(Profile(name: "dup", proxy: ProxyConfig(kind: .socks5, host: "H.io", port: 1080)))
         #expect(try store.profiles().count == 2)

@@ -76,26 +76,6 @@ public enum ProfileSeed {
         setNested(&dict, keys[...], value)
     }
 
-    /// 按点号路径读取嵌套字典里的值。
-    static func get(_ dict: [String: Any], _ path: String) -> Any? {
-        var current: Any? = dict
-        for key in path.split(separator: ".") {
-            current = (current as? [String: Any])?[String(key)]
-        }
-        return current
-    }
-
-    /// 按点号路径删除嵌套字典里的值。
-    static func remove(_ dict: inout [String: Any], _ path: String) {
-        let keys = path.split(separator: ".").map(String.init)
-        guard let last = keys.last else { return }
-        if keys.count == 1 { dict[last] = nil; return }
-        let parentPath = keys.dropLast().joined(separator: ".")
-        guard var parent = get(dict, parentPath) as? [String: Any] else { return }
-        parent[last] = nil
-        set(&dict, parentPath, parent)
-    }
-
     private static func setNested(_ dict: inout [String: Any], _ keys: ArraySlice<String>, _ value: Any) {
         guard let first = keys.first else { return }
         if keys.count == 1 {

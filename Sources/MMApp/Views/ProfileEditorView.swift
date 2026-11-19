@@ -29,7 +29,6 @@ struct ProfileDraft {
     var themeAuto = true
     var themeColor = Color(hex: "#1A73E8")
     var extraArgsText = ""
-    var extensionIds: [String] = []
 
     static let defaultWindowPreset = "default"
     static let customWindowPreset = "custom"
@@ -71,7 +70,6 @@ struct ProfileDraft {
         themeAuto = p.themeColor == nil
         themeColor = Color(hex: p.effectiveThemeColor)
         extraArgsText = p.extraArgs.joined(separator: "\n")
-        extensionIds = p.extensionIds
     }
 
     /// 当前填写的代理（不完整时返回 nil）。
@@ -135,7 +133,6 @@ struct ProfileDraft {
         p.themeColor = themeAuto ? nil : themeColor.hexString
         p.extraArgs = extraArgsText.split(whereSeparator: \.isNewline)
             .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        p.extensionIds = extensionIds
     }
 }
 
@@ -389,7 +386,6 @@ struct ProfileEditorView: View {
                 if !draft.themeAuto {
                     ColorPicker(L("editor.theme.color"), selection: $draft.themeColor, supportsOpacity: false)
                 }
-                extensionRows
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L("editor.extraArgs"))
                     TextEditor(text: $draft.extraArgsText)
@@ -418,39 +414,8 @@ struct ProfileEditorView: View {
         var parts = [draft.geolocation == .block ? L("editor.more.geolocation.block") : L("editor.more.geolocation.ask"),
                      draft.windowPreset == ProfileDraft.defaultWindowPreset ? L("editor.more.window.default")
                          : L("editor.more.window \(ProfileDraft.windowPresetLabel(draft.windowPreset))")]
-        if !draft.extensionIds.isEmpty { parts.append(L("editor.more.extensions \(draft.extensionIds.count)")) }
         if !draft.extraArgsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { parts.append(L("editor.more.extraArgs")) }
         return parts.joined(separator: " · ")
-    }
-
-    @ViewBuilder
-    private var extensionRows: some View {
-        let lib = model.extensionLibrary
-        if isNew {
-            // 新建时不用挑：扩展库里的都会装上，建好后可在编辑里单独取消
-            NewProfileExtensionsRow()
-        } else {
-            if lib.isEmpty && draft.extensionIds.isEmpty {
-                LabeledContent(L("editor.extensions")) {
-                    Text(L("editor.extensions.empty")).foregroundStyle(.secondary)
-                }
-            }
-            ForEach(lib) { e in
-                Toggle(isOn: Binding(
-                    get: { draft.extensionIds.contains(e.id) },
-                    set: { on in
-                        draft.extensionIds.removeAll { $0 == e.id }
-                        if on { draft.extensionIds.append(e.id) }
-                    })) {
-                    Text(L("editor.extension \(model.extensionName(e.id))")).help(e.id)
-                }
-            }
-            ForEach(draft.extensionIds.filter { id in !lib.contains { $0.id == id } }, id: \.self) { id in
-                Toggle(isOn: Binding(get: { true }, set: { if !$0 { draft.extensionIds.removeAll { $0 == id } } })) {
-                    Text(L("editor.extension \(model.extensionName(id))")).help(id)
-                }
-            }
-        }
     }
 
     // MARK: - 动作
@@ -462,7 +427,6 @@ struct ProfileEditorView: View {
         switch target {
         case .new(let tag):
             draft = ProfileDraft(defaultLanguage: model.defaultLanguage, tags: tag.map { [$0] } ?? [])
-            draft.extensionIds = model.newProfileExtensionIds
         case .edit(let id):
             if let p = model.fresh(id) ?? model.profile(id) {
                 original = p
@@ -514,24 +478,6 @@ struct ProfileEditorView: View {
         } catch {
             self.error = error.localizedDescription
         }
-    }
-}
-
-/// 新建表单里的「预装扩展」：只展示扩展库里会装上的扩展，不用逐个勾选。
-struct NewProfileExtensionsRow: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        let lib = model.extensionLibrary
-        LabeledContent(L("editor.extensions")) {
-            if lib.isEmpty {
-                Text(L("editor.extensions.empty")).foregroundStyle(.secondary)
-            } else {
-                Text(lib.map { model.extensionName($0.id) }.formatted(.list(type: .and, width: .narrow)))
-                    .foregroundStyle(.secondary).multilineTextAlignment(.trailing)
-            }
-        }
-        .help(L("editor.extensions.new.help"))
     }
 }
 

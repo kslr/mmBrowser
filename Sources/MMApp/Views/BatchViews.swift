@@ -141,7 +141,6 @@ struct BatchCreateView: View {
                     LanguagePicker(language: $language)
                     TimezonePicker(timezone: $timezone)
                     TextField(L("editor.notes"), text: $notes, prompt: Text(L("common.optional")))
-                    NewProfileExtensionsRow()
                 }
             }
             .formStyle(.grouped)
@@ -165,7 +164,6 @@ struct BatchCreateView: View {
             let proxies = hasProxies ? try ProxyList.parseStrict(proxyText, defaultKind: proxyKind) : []
             guard !names.pattern.trimmingCharacters(in: .whitespaces).isEmpty else { throw DraftError(L("batchCreate.error.pattern")) }
             var template = Profile(name: "", language: language, timezone: timezone, tags: tags, notes: notes)
-            template.extensionIds = model.newProfileExtensionIds
             template.proxyExpiresAt = expiryEnabled && !proxies.isEmpty ? expiry : nil
             model.batchCreate(template: template, names: names, count: count, proxies: proxies)
             dismiss()
@@ -184,8 +182,6 @@ struct BatchEditView: View {
 
     @State private var edit = BatchEdit()
     @State private var windowPreset = ProfileDraft.defaultWindowPreset
-    @State private var addExt = Set<String>()
-    @State private var removeExt = Set<String>()
     @State private var error: String?
 
     var body: some View {
@@ -215,30 +211,6 @@ struct BatchEditView: View {
                         Picker(L("common.windowSize"), selection: $windowPreset) {
                             ForEach(ProfileDraft.windowPresets.filter { $0 != ProfileDraft.customWindowPreset }, id: \.self) {
                                 Text(ProfileDraft.windowPresetLabel($0)).tag($0)
-                            }
-                        }
-                    }
-                }
-
-                if !model.extensionLibrary.isEmpty {
-                    Section(L("batchEdit.section.extensions")) {
-                        ForEach(model.extensionLibrary) { e in
-                            HStack {
-                                Text(model.extensionName(e.id))
-                                    .lineLimit(1).truncationMode(.tail)
-                                    .help(e.id)
-                                Spacer(minLength: 12)
-                                Picker("", selection: Binding(
-                                    get: { addExt.contains(e.id) ? 1 : removeExt.contains(e.id) ? 2 : 0 },
-                                    set: { v in
-                                        addExt.remove(e.id); removeExt.remove(e.id)
-                                        if v == 1 { addExt.insert(e.id) } else if v == 2 { removeExt.insert(e.id) }
-                                    })) {
-                                    Text(L("batchEdit.extension.keep")).tag(0)
-                                    Text(L("batchEdit.extension.install")).tag(1)
-                                    Text(L("batchEdit.extension.uninstall")).tag(2)
-                                }
-                                .pickerStyle(.segmented).labelsHidden().frame(width: 180)
                             }
                         }
                     }
@@ -277,8 +249,6 @@ struct BatchEditView: View {
         var e = edit
         if e.setLanguage, !LanguageTag.isValidSetting(e.language) { error = L("batchEdit.error.language \(e.language)"); return }
         e.window = WindowSize(windowPreset)  // "默认" 解析不出尺寸，就是 nil
-        e.addExtensions = Array(addExt)
-        e.removeExtensions = Array(removeExt)
         model.batchEdit(ids, e)
         dismiss()
     }

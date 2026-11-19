@@ -63,8 +63,6 @@ extension LaunchStage {
         case .checkingExit: L("launch.stage.checkingExit")
         case .exitChecked: L("launch.stage.exitChecked")
         case .seeding: L("launch.stage.seeding")
-        case .installingExtensions: L("launch.stage.installingExtensions")
-        case .warning(let w): w
         case .startingChrome: L("launch.stage.startingChrome")
         }
     }
@@ -86,8 +84,6 @@ final class AppModel {
     var failures: [String: Failure] = [:]
     var checking: Set<String> = []
     var alert: AppAlert?
-    /// 扩展库（全局）：新建环境时自动装上里面的全部扩展
-    var extensionLibrary: [ExtensionEntry] = []
 
     private var observationTask: Task<Void, Never>?
     private var orphanTimer: Timer?
@@ -98,7 +94,6 @@ final class AppModel {
             let store = try Store(paths: paths)
             self.store = store
             startObserving(store)
-            loadExtensionLibrary()
         } catch {
             setupError = L("alert.dataDirectory \(paths.root.path) \(error.localizedDescription)")
         }
@@ -279,7 +274,6 @@ final class AppModel {
                     }
                 })
                 states[id] = .running(running)
-                refreshExtensionNames()
                 running.onExit {
                     Task { @MainActor in self.browserExited(id) }
                 }

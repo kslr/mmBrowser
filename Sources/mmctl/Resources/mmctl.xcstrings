@@ -477,23 +477,6 @@
         }
       }
     },
-    "cli.error.extension %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invalid extension ID: %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无效的扩展 ID：%@"
-          }
-        }
-      }
-    },
     "cli.error.language %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -694,23 +677,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "· 检测出口"
-          }
-        }
-      }
-    },
-    "cli.launch.progress.extensions" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "· Installing/enabling extensions"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "· 安装/启用扩展"
           }
         }
       }
@@ -1004,23 +970,6 @@
         }
       }
     },
-    "cli.profile.extensions %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "  Extensions:     %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "  预装扩展:   %@"
-          }
-        }
-      }
-    },
     "cli.profile.extraArgs %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1085,23 +1034,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "允许直连（不走代理）"
-          }
-        }
-      }
-    },
-    "cli.profile.help.extensions" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Preinstalled extension (Web Store ID or URL); repeatable. Use --ext none to clear."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "预装扩展（应用商店 ID 或链接），可以重复；--ext none 表示清空"
           }
         }
       }

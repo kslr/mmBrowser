@@ -5,9 +5,6 @@ public enum LaunchStage: Sendable {
     case startingProxy
     case checkingExit
     case exitChecked(ExitInfo)
-    case installingExtensions
-    /// 不致命的问题（比如扩展没装好），启动会继续
-    case warning(String)
     case seeding
     case startingChrome
 }
@@ -54,25 +51,8 @@ public final class BrowserLauncher: Sendable {
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true,
                                                     attributes: [.posixPermissions: 0o700])
             progress?(.seeding)
-            HeadlessChrome.recoverSessions(dir)  // 上次维护中途崩溃留下的会话备份
             let language = LanguageTag.resolve(profile.language, countryCode: exit.countryCode)
             try ProfileSeed.apply(profile: profile, language: language, userDataDir: dir)
-
-            // 扩展：同步预装列表；缺失或等待确认的，经由本环境的代理下载并启用
-            try ExtensionManager.syncPreferences(ids: profile.extensionIds, userDataDir: dir)
-            if ExtensionManager.needsMaintenance(ids: profile.extensionIds, userDataDir: dir) {
-                progress?(.installingExtensions)
-                do {
-                    let states = try await ExtensionManager.ensureInstalled(
-                        ids: profile.extensionIds, userDataDir: dir, chrome: chrome, proxyPort: port)
-                    let failed = states.filter { $0.value == .notInstalled || $0.value == .pendingApproval }.keys
-                    if !failed.isEmpty {
-                        progress?(.warning(L("warning.extensions.incomplete \(failed.count)")))
-                    }
-                } catch {
-                    progress?(.warning(L("warning.extensions.failed \(error.localizedDescription)")))
-                }
-            }
 
             // 4. 启动 Chrome
             progress?(.startingChrome)

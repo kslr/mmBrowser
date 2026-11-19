@@ -4,7 +4,7 @@ import Foundation
 public enum ProfileCSV {
     enum Column: String, CaseIterable {
         case seq, name, tags, notes, proxy, proxyExpires
-        case language, timezone, geolocation, window, color, extraArgs, extensions, exitIP, exitCountry
+        case language, timezone, geolocation, window, color, extraArgs, exitIP, exitCountry
 
         var title: String {
             switch self {
@@ -20,7 +20,6 @@ public enum ProfileCSV {
             case .window: L("csv.header.window")
             case .color: L("csv.header.color")
             case .extraArgs: L("csv.header.extraArgs")
-            case .extensions: L("csv.header.extensions")
             case .exitIP: L("csv.header.exitIP")
             case .exitCountry: L("csv.header.exitCountry")
             }
@@ -40,7 +39,6 @@ public enum ProfileCSV {
             case .window: "窗口尺寸"
             case .color: "主题色"
             case .extraArgs: "启动参数"
-            case .extensions: "扩展"
             case .exitIP: "出口IP"
             case .exitCountry: "出口国家"
             }
@@ -93,7 +91,6 @@ public enum ProfileCSV {
                 case .window: p.windowSize?.description ?? ""
                 case .color: p.themeColor ?? ""
                 case .extraArgs: p.extraArgs.joined(separator: " ")
-                case .extensions: p.extensionIds.joined(separator: ",")
                 case .exitIP: p.lastExit?.ip ?? ""
                 case .exitCountry: p.lastExit?.countryCode ?? ""
                 }
@@ -106,8 +103,6 @@ public enum ProfileCSV {
     public struct Row: Sendable {
         public var profile: Profile
         public let lineNumber: Int
-        /// 文件里有没有扩展列。没有时由调用方套用默认扩展；有但为空表示明确不装。
-        public var hasExtensionsColumn = true
     }
 
     /// 解析 CSV。任何一行有错都会抛出（带行号），不做部分导入，避免导入一半。
@@ -172,29 +167,10 @@ public enum ProfileCSV {
                 p.themeColor = color
             }
             p.extraArgs = v(.extraArgs).split(separator: " ").map(String.init).filter { !$0.isEmpty }
-            p.extensionIds = v(.extensions).split(whereSeparator: { $0 == "," || $0 == " " })
-                .map(String.init).filter(ExtensionID.isValid)
 
-            rows.append(Row(profile: p, lineNumber: line, hasExtensionsColumn: index[.extensions] != nil))
+            rows.append(Row(profile: p, lineNumber: line))
         }
         guard !rows.isEmpty else { throw ImportError.empty }
         return rows
-    }
-}
-
-/// Chrome 扩展 ID：32 个 a–p 的小写字母。
-public enum ExtensionID {
-    public static func isValid(_ s: String) -> Bool {
-        s.count == 32 && s.allSatisfy { ("a"..."p").contains($0) }
-    }
-
-    /// 从应用商店链接或纯 ID 里提取扩展 ID。
-    public static func extract(from text: String) -> String? {
-        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if isValid(t) { return t }
-        for part in t.split(whereSeparator: { "/?#&=".contains($0) }) where isValid(String(part)) {
-            return String(part)
-        }
-        return nil
     }
 }

@@ -145,22 +145,6 @@
         }
       }
     },
-    "csv.header.extensions" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "extensions"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "扩展"
-          }
-        }
-      }
-    },
     "csv.header.extraArgs" : {
       "localizations" : {
         "en" : {
@@ -465,54 +449,6 @@
         }
       }
     },
-    "error.cdp.message %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CDP: %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CDP：%@"
-          }
-        }
-      }
-    },
-    "error.cdp.script" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Page script error"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "页面脚本异常"
-          }
-        }
-      }
-    },
-    "error.cdp.unknown" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unknown error"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "未知错误"
-          }
-        }
-      }
-    },
     "error.chrome.alreadyRunning %lld" : {
       "localizations" : {
         "en" : {
@@ -541,86 +477,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chrome 提前退出（退出码 %lld）"
-          }
-        }
-      }
-    },
-    "error.chrome.maintenance.attach %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Maintenance: cannot connect to %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "维护：无法连接 %@"
-          }
-        }
-      }
-    },
-    "error.chrome.maintenance.exited" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Maintenance: Chrome exited early"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "维护：Chrome 提前退出"
-          }
-        }
-      }
-    },
-    "error.chrome.maintenance.notReady %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Maintenance: %@ is not ready"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "维护：%@ 未就绪"
-          }
-        }
-      }
-    },
-    "error.chrome.maintenance.open %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Maintenance: cannot open %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "维护：无法打开 %@"
-          }
-        }
-      }
-    },
-    "error.chrome.maintenance.portTimeout" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Maintenance: timed out waiting for the debugging port"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "维护：等待调试端口超时"
           }
         }
       }
@@ -1597,38 +1453,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "上游代理 %@:%lld"
-          }
-        }
-      }
-    },
-    "warning.extensions.failed %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Extension installation failed: %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "扩展安装失败：%@"
-          }
-        }
-      }
-    },
-    "warning.extensions.incomplete %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Extensions not installed: %lld. Chrome will retry after launch."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "有 %lld 个扩展没能装好，Chrome 启动后会继续尝试"
           }
         }
       }

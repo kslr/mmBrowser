@@ -48,8 +48,6 @@ struct ProfileOptions: ParsableArguments {
     var geo: GeolocationPolicy?
     @Option(name: .customLong("arg"), parsing: .unconditionalSingleValue, help: ArgumentHelp(L("cli.profile.help.extraArgs")))
     var extraArgs: [String] = []
-    @Option(name: .customLong("ext"), help: ArgumentHelp(L("cli.profile.help.extensions")))
-    var extensions: [String] = []
 
     func apply(to p: inout Profile) throws {
         if let proxy { p.proxy = try ProxyConfig.parse(proxy, defaultKind: proxyType); p.allowDirect = false }
@@ -78,14 +76,6 @@ struct ProfileOptions: ParsableArguments {
         }
         if let geo { p.geolocation = geo }
         if !extraArgs.isEmpty { p.extraArgs = extraArgs }
-        if extensions == ["none"] {
-            p.extensionIds = []
-        } else if !extensions.isEmpty {
-            p.extensionIds = try extensions.map {
-                guard let id = ExtensionID.extract(from: $0) else { throw ValidationError(L("cli.error.extension \($0)")) }
-                return id
-            }
-        }
     }
 }
 
@@ -103,7 +93,6 @@ func describe(_ p: Profile, running: Int32?) -> String {
         L("cli.profile.windowColor \(p.windowSize?.description ?? L("common.default")) \(p.effectiveThemeColor)"),
     ]
     if !p.extraArgs.isEmpty { lines.append(L("cli.profile.extraArgs \(p.extraArgs.joined(separator: " "))")) }
-    if !p.extensionIds.isEmpty { lines.append(L("cli.profile.extensions \(p.extensionIds.joined(separator: " "))")) }
     if !p.notes.isEmpty { lines.append(L("cli.profile.notes \(p.notes)")) }
     if let e = p.lastExit {
         lines.append(L("cli.profile.exit \(e.summary) \(e.provider) \(e.checkedAt.formatted(date: .numeric, time: .shortened))"))
@@ -266,8 +255,6 @@ struct Launch: AsyncParsableCommand {
             case .checkingExit: print(L("cli.launch.progress.exit"))
             case .exitChecked(let e): print(L("cli.launch.exit \(e.summary)"))
             case .seeding: print(L("cli.launch.progress.seed"))
-            case .installingExtensions: print(L("cli.launch.progress.extensions"))
-            case .warning(let w): print("  ⚠️ \(w)")
             case .startingChrome: print(L("cli.launch.progress.chrome"))
             }
         }, proxyEvents: { event in

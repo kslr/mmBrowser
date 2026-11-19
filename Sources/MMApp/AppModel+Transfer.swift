@@ -56,11 +56,7 @@ extension AppModel {
 
     /// 整批导入：要么全部入库，要么一个都不入库。
     func importCSV(_ rows: [ProfileCSV.Row]) {
-        let items = rows.map { row in
-            var p = row.profile
-            if !row.hasExtensionsColumn { p.extensionIds = newProfileExtensionIds }
-            return p
-        }
+        let items = rows.map(\.profile)
         guard let added = attempt(L("alert.csvImportFailed"), { try $0.insertMany(items) }) else { return }
         report(L("report.importCSV"), ok: added.count)
         autoCheck(added.map(\.id))

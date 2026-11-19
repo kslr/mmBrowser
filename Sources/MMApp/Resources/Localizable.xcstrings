@@ -1109,54 +1109,6 @@
         }
       }
     },
-    "batchEdit.extension.install" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Install"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "安装"
-          }
-        }
-      }
-    },
-    "batchEdit.extension.keep" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keep"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "不变"
-          }
-        }
-      }
-    },
-    "batchEdit.extension.uninstall" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uninstall"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "卸载"
-          }
-        }
-      }
-    },
     "batchEdit.geolocation.block" : {
       "localizations" : {
         "en" : {
@@ -1273,22 +1225,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "环境参数"
-          }
-        }
-      }
-    },
-    "batchEdit.section.extensions" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Extensions"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "扩展"
           }
         }
       }
@@ -1961,70 +1897,6 @@
         }
       }
     },
-    "editor.extension %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Extension: %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "扩展：%@"
-          }
-        }
-      }
-    },
-    "editor.extensions" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Preinstalled Extensions"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "预装扩展"
-          }
-        }
-      }
-    },
-    "editor.extensions.empty" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "The extension library is empty (Settings → Extension Library)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "扩展库是空的（设置 → 扩展库）"
-          }
-        }
-      }
-    },
-    "editor.extensions.new.help" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Every extension in the library is installed. Manage the library in Settings; uncheck extensions for this profile after it’s created."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "会装上扩展库里的全部扩展。扩展库在设置里管理；建好后可以在编辑里为这个环境取消勾选。"
-          }
-        }
-      }
-    },
     "editor.extraArgs" : {
       "localizations" : {
         "en" : {
@@ -2085,34 +1957,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "更多设置"
-          }
-        }
-      }
-    },
-    "editor.more.extensions %lld" : {
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld extension"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld extensions"
-                }
-              }
-            }
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld 个扩展"
           }
         }
       }
@@ -2965,22 +2809,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "出口正常"
-          }
-        }
-      }
-    },
-    "launch.stage.installingExtensions" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Installing extensions"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "安装扩展"
           }
         }
       }
@@ -4840,134 +4668,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "新环境默认语言"
-          }
-        }
-      }
-    },
-    "settings.extensions.add" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add Extension"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "添加扩展"
-          }
-        }
-      }
-    },
-    "settings.extensions.add.prompt" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paste a Chrome Web Store link or extension ID"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "粘贴 Chrome 应用商店链接或扩展 ID"
-          }
-        }
-      }
-    },
-    "settings.extensions.addButton" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "添加"
-          }
-        }
-      }
-    },
-    "settings.extensions.footer" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "New profiles get every extension in the library (single, batch, and CSV imports without an extensions column). To leave one out of a profile, uncheck it in that profile’s editor or in Batch Edit."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "新建环境会装上扩展库里的全部扩展（单个新建、批量新建、没有扩展列的 CSV 导入）。某个环境不想要，可以在它的编辑表单或批量编辑里取消勾选。"
-          }
-        }
-      }
-    },
-    "settings.extensions.header" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Extension Library"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "扩展库"
-          }
-        }
-      }
-    },
-    "settings.extensions.invalid" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No valid extension ID found (32 letters from a to p)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "没有找到有效的扩展 ID（32 个 a–p 的字母）"
-          }
-        }
-      }
-    },
-    "settings.extensions.pendingName" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(Name available after install)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "（名称待安装后获取）"
-          }
-        }
-      }
-    },
-    "settings.extensions.remove.help" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove from the extension library (new profiles won’t get it; existing profiles keep it until you uncheck it there)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "从扩展库移除（之后新建的环境不再装它；已有环境保留，可以在环境里取消勾选）"
           }
         }
       }

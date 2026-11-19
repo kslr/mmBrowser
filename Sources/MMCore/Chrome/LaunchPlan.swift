@@ -46,7 +46,7 @@ public struct LaunchPlan: Sendable, Equatable {
     }
 }
 
-/// 正式启动和无界面维护都要加的 Chrome 参数。
+/// 启动 Chrome 时总要加的参数。
 public enum ChromeFlags {
     /// 总是关掉的功能：
     /// - MacAppCodeSignClone：Chrome 启动时会用硬链接把自己的 app 包克隆到临时目录（防止运行中被更新替换）。
