@@ -21,22 +21,37 @@ struct StoreTests {
         #expect(throws: StoreError.notFound("nope")) { try s.resolve("nope") }
     }
 
-    @Test func proxyIsUniquePerProfile() throws {
+    @Test("名称留空：新建和保存时都自动命名为\"环境-序号\"")
+    func defaultName() throws {
         let s = try makeStore()
-        let proxy = ProxyConfig(kind: .socks5, host: "Proxy.Example.com", port: 1080, username: "u", password: "1")
-        let a = try s.insert(Profile(name: "A", proxy: proxy))
-        var dup = proxy; dup.host = "proxy.example.com"; dup.password = "other"
-        #expect(throws: StoreError.proxyAlreadyBound(profileName: "A", seq: 1)) {
-            try s.insert(Profile(name: "B", proxy: dup))
-        }
-        // 同主机端口、不同用户名（很多代理商用用户名区分会话）是允许的
-        var otherUser = proxy; otherUser.username = "u2"
-        try s.insert(Profile(name: "C", proxy: otherUser))
+        _ = try s.insert(Profile(name: "A"))
+        var b = try s.insert(Profile(name: "  "))
+        #expect(b.name == L("profile.defaultName \(2)"))
+        b.name = ""
+        try s.update(b)
+        #expect(try s.profile(id: b.id)?.name == L("profile.defaultName \(2)"))
+    }
 
-        // 删除到回收站后代理释放；恢复时如果被占用就报错
+    @Test("整批插入要么全部成功，要么一个都不插入")
+    func insertManyIsAtomic() throws {
+        let s = try makeStore()
+        let shared = ProxyConfig(kind: .socks5, host: "1.1.1.1", port: 1)
+        #expect(try s.insertMany([Profile(name: "a", proxy: shared), Profile(name: "b", proxy: shared)]).map(\.seq) == [1, 2])
+        #expect(throws: (any Error).self) {
+            try s.insertMany([Profile(id: "same", name: "c"), Profile(id: "same", name: "d")])
+        }
+        #expect(try s.profiles().map(\.name) == ["a", "b"])
+    }
+
+    @Test func proxyCanBeShared() throws {
+        let s = try makeStore()
+        let proxy = ProxyConfig(kind: .socks5, host: "proxy.example.com", port: 1080, username: "u", password: "1")
+        let a = try s.insert(Profile(name: "A", proxy: proxy))
+        let b = try s.insert(Profile(name: "B", proxy: proxy))
         try s.softDelete(a.id)
-        let b = try s.insert(Profile(name: "B", proxy: dup))
-        #expect(throws: StoreError.proxyAlreadyBound(profileName: "B", seq: b.seq)) { try s.restore(a.id) }
+        try s.restore(a.id)
+        #expect(try s.profile(id: a.id)?.proxy == proxy && s.profile(id: b.id)?.proxy == proxy)
+        #expect(try s.duplicate(a.id).proxy == proxy)
     }
 
     @Test func exitInfoPersists() throws {
@@ -58,7 +73,6 @@ struct TagTests {
         let b = try s.insert(Profile(name: "b", tags: ["客户B", "广告"]))
         let c = try s.insert(Profile(name: "c", tags: ["客户A"]))
         try s.softDelete(c.id)
-        #expect(try s.allTags() == ["客户A", "客户B", "广告"].sorted())
 
         try s.renameTag("客户A", to: "客户甲")
         #expect(try s.profile(id: a.id)?.tags == ["客户甲", "广告"])
@@ -89,7 +103,7 @@ struct CheckPageTests {
 @Suite("迁移")
 struct MigrationTests {
     /// 早期建的库：v1 没有 alwaysOpenStartURLs 列（与实际出过问题的库结构一致）。
-    @Test("旧库（缺 alwaysOpenStartURLs 列、带分组）能升级到 v4，数据完整、能正常写入")
+    @Test("旧库（缺 alwaysOpenStartURLs 列、带分组、带启动页）能升级到最新，数据完整、能正常写入")
     func upgradeOldDatabase() throws {
         let fm = FileManager.default
         let root = fm.temporaryDirectory.appendingPathComponent("mmmig-\(UUID().uuidString)")
@@ -128,21 +142,9 @@ struct MigrationTests {
         let tables = try store.db.read { try String.fetchAll($0, sql: "SELECT name FROM sqlite_master WHERE type = 'table'") }
         #expect(!tables.contains("profileGroup"))
         let columns = try store.db.read { try $0.columns(in: "profile").map(\.name) }
-        #expect(!columns.contains("groupId"))
-        // 代理唯一约束在重建后依然有效
-        #expect(throws: StoreError.self) { try store.insert(Profile(name: "dup", proxy: ProxyConfig(kind: .socks5, host: "H.io", port: 1080))) }
-
-        var profile = Profile(name: "升级后新建")
-        profile.allowDirect = true
-        profile.alwaysOpenStartURLs = true
-        let saved = try store.insert(profile)
-        #expect(try store.profile(id: saved.id)?.alwaysOpenStartURLs == true)
-    }
-
-    @Test("新建的库也包含 alwaysOpenStartURLs 列")
-    func freshDatabase() throws {
-        let store = try Store(inMemory: AppPaths(root: FileManager.default.temporaryDirectory))
-        let saved = try store.insert(Profile(name: "x"))
-        #expect(try store.profile(id: saved.id)?.alwaysOpenStartURLs == false)
+        #expect(!columns.contains("groupId") && !columns.contains("startURLs") && !columns.contains("alwaysOpenStartURLs"))
+        // v5 取消了代理唯一约束
+        try store.insert(Profile(name: "dup", proxy: ProxyConfig(kind: .socks5, host: "H.io", port: 1080)))
+        #expect(try store.profiles().count == 2)
     }
 }

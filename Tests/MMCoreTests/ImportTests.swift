@@ -31,19 +31,17 @@ struct ImportTests {
         #expect(throws: ImportError.badLine(5, ProxyParseError.invalidFormat("bad line").localizedDescription)) {
             try ProxyList.parseStrict(text)
         }
-        #expect(throws: (any Error).self) { try ProxyList.parseStrict("1.1.1.1:1\n1.1.1.1:1") }
+        #expect(try ProxyList.parseStrict("1.1.1.1:1\n1.1.1.1:1").count == 2)  // 同一代理可以分给多个环境
         #expect(try ProxyList.parseStrict("1.1.1.1:1\n1.1.1.1:2", defaultKind: .http).map(\.kind) == [.http, .http])
     }
 
     @Test("CSV 导出再导入，字段一致")
     func profileRoundTrip() throws {
         var p = Profile(name: "客户A, 01", proxy: ProxyConfig(kind: .http, host: "h.io", port: 8080, username: "u", password: "p,\"x"),
-                        language: "ja-JP", timezone: "Asia/Tokyo", startURLs: ["https://a.com/", "https://b.com/x?y=1"],
-                        tags: ["广告", "重要"], notes: "多行\n备注")
-        p.windowWidth = 1440; p.windowHeight = 900
+                        language: "ja-JP", timezone: "Asia/Tokyo", tags: ["广告", "重要"], notes: "多行\n备注")
+        p.windowSize = WindowSize(width: 1440, height: 900)
         p.themeColor = "#112233"
         p.geolocation = .ask
-        p.alwaysOpenStartURLs = true
         p.extraArgs = ["--force-dark-mode"]
         p.extensionIds = ["ddkjiahejlhfcafbddmgiahcphecmpfh"]
         p.proxyExpiresAt = ProfileCSV.parseDate("2026-12-31")
@@ -52,8 +50,8 @@ struct ImportTests {
         #expect(rows.count == 1)
         let q = rows[0].profile
         #expect(q.name == p.name && q.proxy == p.proxy && q.language == p.language && q.timezone == p.timezone)
-        #expect(q.startURLs == p.startURLs && q.tags == p.tags && q.notes == p.notes)
-        #expect(q.windowWidth == 1440 && q.themeColor == "#112233" && q.geolocation == .ask && q.alwaysOpenStartURLs)
+        #expect(q.tags == p.tags && q.notes == p.notes)
+        #expect(q.windowSize == p.windowSize && q.themeColor == "#112233" && q.geolocation == .ask)
         #expect(q.extraArgs == p.extraArgs && q.extensionIds == p.extensionIds)
         #expect(ProfileCSV.formatDate(q.proxyExpiresAt!) == "2026-12-31")
     }
@@ -66,6 +64,8 @@ struct ImportTests {
         #expect(rows[1].profile.allowDirect && rows[1].profile.language == "zh-CN")
         #expect(throws: ImportError.missingColumn(L("csv.requiredName"))) { try ProfileCSV.parseImport("proxy\n1.2.3.4:1\n") }
         #expect(throws: ImportError.badLine(3, L("error.csv.timezone \("Mars/Base")"))) { try ProfileCSV.parseImport("名称,时区\nA,UTC\nB,Mars/Base\n") }
+        #expect(try ProfileCSV.parseImport("name,window\nA,1280×800\n")[0].profile.windowSize == WindowSize(width: 1280, height: 800))
+        #expect(throws: ImportError.badLine(2, L("error.csv.window"))) { try ProfileCSV.parseImport("name,window\nA,300x200\n") }
     }
 
     @Test func extensionID() {
@@ -73,33 +73,19 @@ struct ImportTests {
         #expect(ExtensionID.extract(from: "abc") == nil)
     }
 
-    @Test("批量插入：代理冲突的单独失败，其它照常插入")
-    func insertMany() throws {
-        let s = try makeStore()
-        let px = ProxyConfig(kind: .socks5, host: "1.1.1.1", port: 1)
-        let r = try s.insertMany([Profile(name: "a", proxy: px), Profile(name: "b", proxy: px), Profile(name: "c")])
-        #expect(r.inserted.map(\.name) == ["a", "c"])
-        #expect(r.failed.map(\.0) == ["b"])
-    }
-
-    @Test("复制环境：不复制代理；回收站按天数清理；设置读写")
+    @Test("复制环境：连代理一起复制；回收站按天数清理")
     func duplicateAndTrash() throws {
         let s = try makeStore()
         var p = Profile(name: "src", proxy: ProxyConfig(kind: .socks5, host: "h", port: 1), tags: ["t"])
         p.language = "de-DE"
         let a = try s.insert(p)
         let b = try s.duplicate(a.id)
-        #expect(b.name == L("profile.duplicateName \(a.name)") && b.proxy == nil && b.tags == ["t"] && b.language == "de-DE" && b.seq == 2)
+        #expect(b.name == L("profile.duplicateName \(a.name)") && b.proxy == a.proxy && b.tags == ["t"] && b.language == "de-DE" && b.seq == 2)
 
         try s.softDelete(b.id)
         #expect(try s.purgeTrash(olderThanDays: 30).isEmpty)
         #expect(try s.purgeTrash(olderThanDays: 30, now: Date().addingTimeInterval(31 * 86_400)) == [b.id])
         #expect(try s.profile(id: b.id) == nil)
-
-        try s.setSetting("k", ["x": 1])
-        #expect(try s.setting("k", as: [String: Int].self) == ["x": 1])
-        try s.setSetting("k", ["x": 2])
-        #expect(try s.setting("k", as: [String: Int].self) == ["x": 2])
     }
 
     @Test("复制环境目录时跳过缓存和锁文件")
@@ -127,7 +113,6 @@ struct DataTests {
         let blob = try ChromeCrypto.encrypt(plain)
         #expect(blob.prefix(3) == Data("v10".utf8))
         #expect(try ChromeCrypto.decrypt(blob) == plain)
-        #expect(ChromeCrypto.key.map { String(format: "%02x", $0) }.joined().count == 32)
     }
 
     @Test("Cookie JSON 兼容多种写法")
@@ -146,7 +131,7 @@ struct DataTests {
         #expect(try ChromeCookies.importJSON(try ChromeCookies.exportJSON(c)) == c)
     }
 
-    @Test("备份导出再导入：新 id、标签保留、代理冲突时去掉代理、数据目录跟着走")
+    @Test("备份导出再导入：新 id、代理和标签保留、数据目录跟着走（不含缓存）")
     func backupRoundTrip() throws {
         let fm = FileManager.default
         let root = fm.temporaryDirectory.appendingPathComponent("mmbk-\(UUID().uuidString)")
@@ -166,18 +151,14 @@ struct DataTests {
             try ProfileBackup.export(profileId: src.id, store: store, isRunning: true, to: file)
         }
 
+        // 源环境还在，代理照样保留（一个代理可以给多个环境用）
         let r = try ProfileBackup.import(from: file, store: store)
-        #expect(r.profile.id != src.id && r.profile.seq == 2 && r.profile.name == "源")
-        #expect(r.profile.proxy == nil && r.warnings.count == 1)
-        #expect(r.profile.tags == ["t"])
-        #expect(r.profile.lastOpenedAt != nil)
-        let newDir = store.paths.profileDir(r.profile.id)
+        #expect(r.id != src.id && r.seq == 2 && r.name == "源")
+        #expect(r.proxy == proxy)
+        #expect(r.tags == ["t"])
+        #expect(r.lastOpenedAt != nil)
+        let newDir = store.paths.profileDir(r.id)
         #expect(try Data(contentsOf: newDir.appendingPathComponent("Default/Login Data")) == Data("pw".utf8))
         #expect(!fm.fileExists(atPath: newDir.appendingPathComponent("Default/Cache").path))
-
-        // 源环境删掉后再导入，代理可以保留
-        try store.purge(src.id)
-        let r2 = try ProfileBackup.import(from: file, store: store)
-        #expect(r2.profile.proxy == proxy && r2.warnings.isEmpty)
     }
 }

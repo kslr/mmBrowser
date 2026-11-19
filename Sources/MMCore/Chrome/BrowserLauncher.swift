@@ -21,14 +21,6 @@ public final class BrowserLauncher: Sendable {
         self.chrome = chrome
     }
 
-    /// 环境是否已经有 Chrome 在跑（不管是不是本程序启动的）。依据是 Chrome 的 SingletonLock（指向 "主机名-PID"）。
-    public func runningPID(of profileId: String) -> Int32? {
-        let lock = store.paths.profileDir(profileId).appendingPathComponent("SingletonLock").path
-        guard let target = try? FileManager.default.destinationOfSymbolicLink(atPath: lock),
-              let pidStr = target.split(separator: "-").last, let pid = Int32(pidStr) else { return nil }
-        return kill(pid, 0) == 0 ? pid : nil
-    }
-
     /// 启动一个环境。任何一步失败都会清理已经起来的东西并抛错，不会留下一个没有代理的浏览器。
     public func launch(
         profileId: String,
@@ -38,16 +30,9 @@ public final class BrowserLauncher: Sendable {
         guard let profile = try store.profile(id: profileId), !profile.isDeleted else {
             throw StoreError.notFound(profileId)
         }
-        if let pid = runningPID(of: profile.id) { throw ChromeError.alreadyRunning(pid: pid) }
-
-        let upstream: Upstream
-        if let proxy = profile.proxy {
-            upstream = .proxy(proxy)
-        } else if profile.allowDirect {
-            upstream = .direct
-        } else {
-            throw ChromeError.noProxy
-        }
+        let dir = store.paths.profileDir(profile.id)
+        if let pid = ProfileLock.runningPID(dir) { throw ChromeError.alreadyRunning(pid: pid) }
+        guard let upstream = profile.upstream else { throw ChromeError.noProxy }
 
         // 1. 本地入口
         progress?(.startingProxy)
@@ -65,8 +50,7 @@ public final class BrowserLauncher: Sendable {
                 throw ChromeError.noTimezone
             }
 
-            // 3. 首次初始化 + 写入配置
-            let dir = store.paths.profileDir(profile.id)
+            // 3. 写入配置
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true,
                                                     attributes: [.posixPermissions: 0o700])
             progress?(.seeding)
@@ -92,16 +76,12 @@ public final class BrowserLauncher: Sendable {
 
             // 4. 启动 Chrome
             progress?(.startingChrome)
-            let firstOpen = profile.lastOpenedAt == nil
             // 检测页：上次会话里还开着就不再重复打开（否则没关的检测页会越积越多）
-            var checkURL = store.checkPage.url
-            if let url = checkURL, let open = SessionInspector.openTabURLs(userDataDir: dir),
-               open.contains(where: { SessionInspector.sameSite($0, url) }) {
-                checkURL = nil
+            let checkURL = store.checkPage.url.flatMap {
+                SessionInspector.hasOpenTab(sameSiteAs: $0, userDataDir: dir) ? nil : $0
             }
             let plan = LaunchPlan.make(profile: profile, language: language, userDataDir: dir, localProxyPort: port,
-                                       timezone: timezone, checkPageURL: checkURL,
-                                       openStartURLs: firstOpen || profile.alwaysOpenStartURLs)
+                                       timezone: timezone, checkPageURL: checkURL)
             let process = makeProcess(arguments: plan.arguments, environment: plan.environment)
             let running = RunningBrowser(profileId: profile.id, process: process, proxy: server, exit: exit, timezone: timezone)
             process.terminationHandler = { _ in running.markExited() }  // 先挂回调再启动，避免错过立即退出
@@ -139,16 +119,12 @@ public final class BrowserLauncher: Sendable {
 
     /// 等到 SingletonLock 指向我们启动的进程，说明它确实成了这个环境的主进程。
     private func waitUntilOwnsProfile(dir: URL, process: Process, timeout: TimeInterval = 20) async throws {
-        let lock = dir.appendingPathComponent("SingletonLock").path
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
             guard process.isRunning else {
                 throw ChromeError.startFailed(L("error.chrome.exited \(Int(process.terminationStatus))"))
             }
-            if let target = try? FileManager.default.destinationOfSymbolicLink(atPath: lock),
-               target.hasSuffix("-\(process.processIdentifier)") {
-                return
-            }
+            if ProfileLock.ownerPID(dir) == process.processIdentifier { return }
             try await Task.sleep(for: .milliseconds(100))
         }
         throw ChromeError.startFailed(L("error.chrome.readyTimeout"))

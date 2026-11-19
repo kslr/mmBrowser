@@ -5,20 +5,19 @@ import Testing
 @Suite("Chrome 启动参数与配置种子")
 struct ChromeTests {
     func sampleProfile() -> Profile {
-        var p = Profile(name: "客户A-01", proxy: ProxyConfig(kind: .socks5, host: "h", port: 1),
-                        language: "ja-JP", startURLs: ["https://example.com/", "https://example.org/"])
+        var p = Profile(name: "客户A-01", proxy: ProxyConfig(kind: .socks5, host: "h", port: 1), language: "ja-JP")
         p.windowWidth = 1440; p.windowHeight = 900
         p.extraArgs = ["--force-dark-mode"]
         return p
     }
 
-    @Test("一步启动：代理与防泄漏参数、语言写法不会被当成网址；启动页按需附加")
+    @Test("一步启动：代理与防泄漏参数、语言写法不会被当成网址；检测页放在最后")
     func plan() {
         let dir = URL(fileURLWithPath: "/tmp/mm/p1")
-        let first = LaunchPlan.make(profile: sampleProfile(), language: "ja-JP", userDataDir: dir, localProxyPort: 40000,
-                                    timezone: "Asia/Tokyo", checkPageURL: "https://check.example/", openStartURLs: true)
-        #expect(first.environment == ["TZ": "Asia/Tokyo"])
-        let args = first.arguments
+        let plan = LaunchPlan.make(profile: sampleProfile(), language: "ja-JP", userDataDir: dir, localProxyPort: 40000,
+                                   timezone: "Asia/Tokyo", checkPageURL: "https://check.example/")
+        #expect(plan.environment == ["TZ": "Asia/Tokyo"])
+        let args = plan.arguments
         #expect(args.contains("--user-data-dir=/tmp/mm/p1"))
         #expect(args.contains("--use-mock-keychain"))
         #expect(args.contains("--restore-last-session"))
@@ -33,15 +32,11 @@ struct ChromeTests {
         #expect(args.contains("--disable-features=MacAppCodeSignClone"))
         #expect(!args.contains("--no-startup-window"))
         #expect(!args.contains("-AppleLocale"))
-        #expect(args.suffix(5) == ["-AppleLanguages", "(\"ja-JP\", \"<\")", "https://check.example/",
-                                   "https://example.com/", "https://example.org/"])
+        #expect(args.suffix(3) == ["-AppleLanguages", "(\"ja-JP\", \"<\")", "https://check.example/"])
 
-        // 之后的启动：恢复会话 + 检测页；没有检测页时什么网址都不带
-        let later = LaunchPlan.make(profile: sampleProfile(), language: "ja-JP", userDataDir: dir, localProxyPort: 40000,
-                                    timezone: "Asia/Tokyo", checkPageURL: "https://check.example/", openStartURLs: false)
-        #expect(later.arguments.suffix(3) == ["-AppleLanguages", "(\"ja-JP\", \"<\")", "https://check.example/"])
+        // 没有检测页时什么网址都不带，只恢复上次的会话
         let none = LaunchPlan.make(profile: sampleProfile(), language: "ja-JP", userDataDir: dir, localProxyPort: 40000,
-                                   timezone: "Asia/Tokyo", checkPageURL: nil, openStartURLs: false)
+                                   timezone: "Asia/Tokyo", checkPageURL: nil)
         #expect(none.arguments.suffix(2) == ["-AppleLanguages", "(\"ja-JP\", \"<\")"])
     }
 
@@ -57,14 +52,14 @@ struct ChromeTests {
         var p = sampleProfile()
         p.extraArgs = ["--disable-features=Translate"]
         let args = LaunchPlan.make(profile: p, language: "ja-JP", userDataDir: URL(fileURLWithPath: "/tmp/x"),
-                                   localProxyPort: 1, timezone: "UTC", checkPageURL: nil, openStartURLs: false).arguments
+                                   localProxyPort: 1, timezone: "UTC", checkPageURL: nil).arguments
         #expect(args.filter { $0.hasPrefix("--disable-features") } == ["--disable-features=Translate,MacAppCodeSignClone"])
     }
 
     @Test("非法语言代码回落到 en-US，避免拼坏 plist")
     func badLanguage() {
         let plan = LaunchPlan.make(profile: sampleProfile(), language: "ja\", \"x", userDataDir: URL(fileURLWithPath: "/tmp/x"),
-                                   localProxyPort: 1, timezone: "UTC", checkPageURL: nil, openStartURLs: false)
+                                   localProxyPort: 1, timezone: "UTC", checkPageURL: nil)
         #expect(plan.arguments.contains("(\"en-US\", \"<\")"))
         #expect(LanguageTag.isValid("zh-Hant-TW"))
         #expect(!LanguageTag.isValid("en_US"))
@@ -72,14 +67,6 @@ struct ChromeTests {
         #expect(LanguageTag.resolve("auto", countryCode: "XX") == "en-US")
         #expect(LanguageTag.resolve("de-DE", countryCode: "JP") == "de-DE")
         #expect(LanguageTag.isValidSetting("auto") && !LanguageTag.isValid("auto"))
-    }
-
-    @Test("直连环境不带代理参数")
-    func directPlan() {
-        var p = sampleProfile(); p.proxy = nil; p.allowDirect = true
-        let plan = LaunchPlan.make(profile: p, language: "en-US", userDataDir: URL(fileURLWithPath: "/tmp/x"),
-                                   localProxyPort: nil, timezone: "UTC", checkPageURL: nil, openStartURLs: false)
-        #expect(!plan.arguments.contains { $0.hasPrefix("--proxy-server") })
     }
 
     @Test("SkColor 换算")

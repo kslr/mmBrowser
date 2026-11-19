@@ -11,7 +11,6 @@ public enum ProxyEvent: Sendable {
 /// 本地 SOCKS5 入口：只监听 127.0.0.1，无认证，只支持 CONNECT，
 /// 所有请求都转给配置好的上游。上游失败就把失败返回给浏览器，绝不回落到直连。
 public final class LocalProxyServer: @unchecked Sendable {
-    public let upstream: Upstream
     private let dialer: Dialer
     private let queue: DispatchQueue
     private let lock = NSLock()
@@ -22,7 +21,6 @@ public final class LocalProxyServer: @unchecked Sendable {
     private let onEvent: (@Sendable (ProxyEvent) -> Void)?
 
     public init(upstream: Upstream, onEvent: (@Sendable (ProxyEvent) -> Void)? = nil) {
-        self.upstream = upstream
         self.dialer = Dialer(upstream: upstream)
         self.queue = DispatchQueue(label: "mmbrowser.proxy")
         self.onEvent = onEvent
@@ -31,9 +29,6 @@ public final class LocalProxyServer: @unchecked Sendable {
     public var port: UInt16 { lock.withLock { _port } }
 
     public var activeTunnelCount: Int { lock.withLock { active.count / 2 } }
-
-    /// `socks5://127.0.0.1:<port>`，交给 Chrome 的 --proxy-server。
-    public var proxyServerArgument: String { "socks5://127.0.0.1:\(port)" }
 
     /// 开始监听，返回分配到的端口。
     @discardableResult

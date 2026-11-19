@@ -31,14 +31,6 @@ public enum ProxyList {
            case .failure(let e) = bad.result {
             throw ImportError.badLine(bad.lineNumber, e.localizedDescription)
         }
-        // 这一批内部重复也算错误
-        var seen = Set<String>()
-        for l in lines {
-            if case .success(let p) = l.result {
-                let key = "\(p.host.lowercased()):\(p.port):\(p.username ?? "")"
-                if !seen.insert(key).inserted { throw ImportError.badLine(l.lineNumber, L("error.import.duplicateProxy \(p.displayString)")) }
-            }
-        }
         return lines.compactMap { try? $0.result.get() }
     }
 }

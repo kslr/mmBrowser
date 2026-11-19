@@ -54,13 +54,8 @@ public enum ProfileBackup {
         try fm.setAttributes([.posixPermissions: 0o600], ofItemAtPath: file.path)
     }
 
-    public struct ImportResult: Sendable {
-        public let profile: Profile
-        public let warnings: [String]
-    }
-
     /// 导入为一个新环境（新的 id 和序号）。
-    public static func `import`(from file: URL, store: Store) throws -> ImportResult {
+    public static func `import`(from file: URL, store: Store) throws -> Profile {
         let fm = FileManager.default
         let work = fm.temporaryDirectory.appendingPathComponent("mmrestore-\(UUID().uuidString)")
         defer { try? fm.removeItem(at: work) }
@@ -75,15 +70,11 @@ public enum ProfileBackup {
         }
         guard manifest.formatVersion <= formatVersion else { throw BackupError.invalidFile(L("error.backup.newerVersion")) }
 
-        var warnings: [String] = []
+        // lastOpenedAt 保留（列表里能看出是用过的环境）；出口检测结果在新机器上不一定成立，清掉
         var p = manifest.profile
         p.id = UUID().uuidString.lowercased()
         p.deletedAt = nil
-        if let proxy = p.proxy, let owner = try store.proxyOwner(of: proxy) {
-            warnings.append(L("warning.backup.proxyBound \(proxy.displayString) \(owner.seq) \(owner.name)"))
-            p.proxy = nil
-            p.proxyExpiresAt = nil
-        }
+        p.lastExit = nil
         let saved = try store.insert(p)
 
         let src = work.appendingPathComponent("data")
@@ -92,12 +83,7 @@ public enum ProfileBackup {
             try? fm.removeItem(at: dst)
             try fm.moveItem(at: src, to: dst)
         }
-        // lastOpenedAt 保留：已经用过的环境，启动时恢复会话而不是重新打开启动页
-        try store.db.write { db in
-            try db.execute(sql: "UPDATE profile SET lastOpenedAt = ?, lastExit = NULL WHERE id = ?",
-                           arguments: [manifest.profile.lastOpenedAt, saved.id])
-        }
-        return ImportResult(profile: try store.profile(id: saved.id) ?? saved, warnings: warnings)
+        return saved
     }
 
     private static func ditto(_ args: [String]) throws {

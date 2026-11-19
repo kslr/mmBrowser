@@ -15,11 +15,8 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
     public var name: String
     public var tags: [String]
     public var notes: String
-    public var startURLs: [String]
-    /// false（默认）：启动页只在第一次打开环境时打开，之后恢复上次的会话；true：每次启动都额外打开启动页。
-    public var alwaysOpenStartURLs: Bool
 
-    // 代理（扁平存储，方便建唯一索引）
+    // 代理（数据库里按字段扁平存储，代码里用 proxy 读写）
     public var proxyKind: ProxyConfig.Kind?
     public var proxyHost: String?
     public var proxyPort: Int?
@@ -55,7 +52,6 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
         proxy: ProxyConfig? = nil,
         language: String = LanguageTag.auto,
         timezone: String? = nil,
-        startURLs: [String] = [],
         tags: [String] = [],
         notes: String = ""
     ) {
@@ -65,8 +61,6 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
         self.name = name
         self.tags = tags
         self.notes = notes
-        self.startURLs = startURLs
-        self.alwaysOpenStartURLs = false
         self.allowDirect = false
         self.language = language
         self.timezone = timezone
@@ -93,7 +87,21 @@ public struct Profile: Codable, Identifiable, Hashable, Sendable {
         }
     }
 
+    /// 本地入口要转给的上游；既没有代理也没允许直连时为 nil（不能启动、不能检测）。
+    public var upstream: Upstream? {
+        if let proxy { return .proxy(proxy) }
+        return allowDirect ? .direct : nil
+    }
+
+    public var windowSize: WindowSize? {
+        get { windowWidth.flatMap { w in windowHeight.map { WindowSize(width: w, height: $0) } } }
+        set { windowWidth = newValue?.width; windowHeight = newValue?.height }
+    }
+
     public var isDeleted: Bool { deletedAt != nil }
+
+    /// `#序号 名称`，提示和列表里指代一个环境时用。
+    public var numberedName: String { "#\(seq) \(name)" }
 
     /// 实际使用的主题色。
     public var effectiveThemeColor: String {
@@ -114,10 +122,35 @@ public enum ThemePalette {
         "#0B8043", "#C5221F",
     ]
 
+    /// 校验用户填写的 `#RRGGBB`，返回统一的大写写法；不合法时返回 nil。
+    public static func parse(_ text: String) -> String? {
+        text.range(of: "^#[0-9A-Fa-f]{6}$", options: .regularExpression) != nil ? text.uppercased() : nil
+    }
+
     public static func color(for id: String) -> String {
         // FNV-1a，保证跨进程稳定（Swift 的 hashValue 每次运行都不同）
         var hash: UInt32 = 2_166_136_261
         for b in id.utf8 { hash = (hash ^ UInt32(b)) &* 16_777_619 }
         return colors[Int(hash % UInt32(colors.count))]
     }
+}
+
+/// 窗口尺寸，文本写法 `宽x高`（也认 `×` 和 `*`），最小 400×300。
+public struct WindowSize: Hashable, Sendable, CustomStringConvertible {
+    public var width: Int
+    public var height: Int
+
+    public init(width: Int, height: Int) {
+        self.width = width
+        self.height = height
+    }
+
+    public init?(_ text: String) {
+        let wh = text.lowercased().split(whereSeparator: { "x×*".contains($0) })
+            .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+        guard wh.count == 2, wh[0] >= 400, wh[1] >= 300 else { return nil }
+        self.init(width: wh[0], height: wh[1])
+    }
+
+    public var description: String { "\(width)x\(height)" }
 }

@@ -1217,6 +1217,50 @@
         }
       }
     },
+    "batchEdit.removeTags.help %@ %lld" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%2$lld profile has “%1$@”. Click to mark it for removal; click again to undo."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%2$lld profiles have “%1$@”. Click to mark it for removal; click again to undo."
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "有 %2$lld 个环境带“%1$@”，点一下标记移除，再点取消"
+          }
+        }
+      }
+    },
+    "batchEdit.removeTags.none" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These profiles have no tags"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "这些环境都没有标签"
+          }
+        }
+      }
+    },
     "batchEdit.section.environment" : {
       "localizations" : {
         "en" : {
@@ -2334,13 +2378,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Each proxy can be assigned to only one profile. If the proxy disconnects, the browser goes offline instead of falling back to a direct connection."
+            "value" : "If the proxy disconnects, the browser goes offline instead of falling back to a direct connection."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "一个代理只能绑定一个环境。代理断开时浏览器直接断网，不会回落到直连。"
+            "value" : "代理断开时浏览器直接断网，不会回落到直连。"
           }
         }
       }
@@ -2501,70 +2545,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "粘贴新的代理即可替换"
-          }
-        }
-      }
-    },
-    "editor.proxy.summary.noAuth" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No Authentication"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无认证"
-          }
-        }
-      }
-    },
-    "editor.proxy.summary.noPassword" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No Password"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "无密码"
-          }
-        }
-      }
-    },
-    "editor.proxy.summary.password" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Password Set"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "有密码"
-          }
-        }
-      }
-    },
-    "editor.proxy.summary.username %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "User %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "账号 %@"
           }
         }
       }
@@ -3410,13 +3390,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Profiles with a proxy: %lld.\nRows whose proxy is already used by another profile will fail to import and will be listed afterward."
+            "value" : "Profiles with a proxy: %lld."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "代理：%lld 个环境有代理。\n代理已被其它环境占用的行会导入失败，结束后会列出。"
+            "value" : "代理：%lld 个环境有代理。"
           }
         }
       }
@@ -3477,22 +3457,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "启动选中的环境（已运行的切到前台）"
-          }
-        }
-      }
-    },
-    "list.menu.addTag" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add Tag"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "添加标签"
           }
         }
       }
@@ -3700,7 +3664,7 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "新标签…"
+            "value" : "新建标签…"
           }
         }
       }
@@ -3717,22 +3681,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "彻底删除…"
-          }
-        }
-      }
-    },
-    "list.menu.removeTag" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Remove Tag"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "移除标签"
           }
         }
       }
@@ -3765,6 +3713,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "设置代理到期日…"
+          }
+        }
+      }
+    },
+    "list.menu.tag.partial %@ %lld %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ (%2$lld of %3$lld)"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@（%2$lld/%3$lld）"
+          }
+        }
+      }
+    },
+    "list.menu.tags" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tags"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标签"
           }
         }
       }
@@ -3877,6 +3857,66 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "新建环境…"
+          }
+        }
+      }
+    },
+    "list.newTag.confirm" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "添加"
+          }
+        }
+      }
+    },
+    "list.newTag.field" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tag Name"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "标签名称"
+          }
+        }
+      }
+    },
+    "list.newTag.title %lld" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Add a New Tag to %lld Profile"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Add a New Tag to %lld Profiles"
+                }
+              }
+            }
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "给 %lld 个环境加新标签"
           }
         }
       }
@@ -4008,38 +4048,6 @@
     "mmBrowser" : {
       "shouldTranslate" : false
     },
-    "profile.defaultName %lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Profile-%lld"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "环境-%lld"
-          }
-        }
-      }
-    },
-    "profile.placeholderName" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Profile"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "环境"
-          }
-        }
-      }
-    },
     "proxies.column.exit" : {
       "localizations" : {
         "en" : {
@@ -4132,22 +4140,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "代理"
-          }
-        }
-      }
-    },
-    "proxies.column.username" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Username"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "账号"
           }
         }
       }
@@ -4484,38 +4476,6 @@
         }
       }
     },
-    "report.batchEdit" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Batch Edit"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "批量编辑"
-          }
-        }
-      }
-    },
-    "report.csvLine %lld %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Line %1$lld %2$@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "第 %1$lld 行 %2$@"
-          }
-        }
-      }
-    },
     "report.exportBackups" : {
       "localizations" : {
         "en" : {
@@ -4656,22 +4616,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@：成功 %2$lld 个，失败 %3$lld 个"
-          }
-        }
-      }
-    },
-    "report.warning %lld %@ %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "#%1$lld %2$@: %3$@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "#%1$lld %2$@：%3$@"
           }
         }
       }
@@ -5636,6 +5580,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在关闭"
+          }
+        }
+      }
+    },
+    "tagEditor.add.help %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add tag “%@”"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加上标签“%@”"
           }
         }
       }

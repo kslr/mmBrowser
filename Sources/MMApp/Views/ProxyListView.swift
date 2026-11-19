@@ -36,23 +36,18 @@ struct ProxyListView: View {
                 .width(min: 90, ideal: 140)
             TableColumn(L("proxies.column.proxy"), value: \.host) { r in
                 if let p = r.profile.proxy {
-                    HStack(spacing: 5) {
-                        Text(p.kind == .socks5 ? "S5" : "HTTP").font(.caption2.weight(.medium)).foregroundStyle(.secondary)
-                            .padding(.horizontal, 4).padding(.vertical, 1)
-                            .background(.quaternary, in: RoundedRectangle(cornerRadius: 3))
-                        Text(verbatim: "\(p.host):\(p.port)").lineLimit(1).truncationMode(.middle)
-                    }
+                    // 完整地址（含账号密码），可以直接选中复制
+                    Text(verbatim: p.urlString).lineLimit(1).truncationMode(.middle)
+                        .textSelection(.enabled).help(p.urlString)
                 } else {
                     Text(r.profile.allowDirect ? L("common.direct") : L("common.notConfigured")).foregroundStyle(.orange)
                 }
             }
-            .width(min: 120, ideal: 190)
-            TableColumn(L("proxies.column.username")) { r in Text(r.profile.proxy?.username ?? "—").foregroundStyle(.secondary).lineLimit(1) }
-                .width(min: 50, ideal: 90)
+            .width(min: 160, ideal: 300)
             TableColumn(L("proxies.column.exit")) { r in
                 HStack(spacing: 4) {
                     if model.checking.contains(r.id) { ProgressView().controlSize(.mini) }
-                    if model.checkFailed.contains(r.id), let err = model.lastError[r.id] {
+                    if case .check(let err) = model.failures[r.id] {
                         Image(systemName: "xmark.octagon.fill").foregroundStyle(.red)
                         Text(L("common.failed")).foregroundStyle(.red).help(err)
                     } else if let e = r.profile.lastExit {
@@ -88,12 +83,7 @@ struct ProxyListView: View {
                 Button(L("proxies.menu.setExpiry")) { batch = .expiry(list) }
                 if list.count == 1 {
                     Button(L("proxies.menu.editProfile")) { editing = .edit(list[0]) }
-                    Button(L("common.copyProxyAddress")) {
-                        if let p = model.profile(list[0])?.proxy {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(p.urlString, forType: .string)
-                        }
-                    }
+                    Button(L("common.copyProxyAddress")) { model.copyProxyAddress(list[0]) }
                 }
             }
         } primaryAction: { ids in

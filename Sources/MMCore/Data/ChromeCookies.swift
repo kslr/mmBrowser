@@ -55,14 +55,14 @@ public struct CookieRecord: Codable, Hashable, Sendable {
         let session = try c.decodeIfPresent(Bool.self, forKey: .session) ?? (exp == nil)
         expirationDate = session ? nil : exp
         self.session = expirationDate == nil
-        if let hostOnly = try c.decodeIfPresent(Bool.self, forKey: .hostOnly) {
-            self.hostOnly = hostOnly
-            domain = hostOnly ? (rawDomain.hasPrefix(".") ? String(rawDomain.dropFirst()) : rawDomain)
-                              : (rawDomain.hasPrefix(".") ? rawDomain : "." + rawDomain)
-        } else {
-            hostOnly = !rawDomain.hasPrefix(".")
-            domain = rawDomain
-        }
+        hostOnly = try c.decodeIfPresent(Bool.self, forKey: .hostOnly) ?? !rawDomain.hasPrefix(".")
+        domain = Self.hostKey(rawDomain, hostOnly: hostOnly)
+    }
+
+    /// Chrome 的 host_key 写法：只对本域名生效的不带前导点，对子域名也生效的带前导点。
+    static func hostKey(_ domain: String, hostOnly: Bool) -> String {
+        let bare = domain.hasPrefix(".") ? String(domain.dropFirst()) : domain
+        return hostOnly ? bare : "." + bare
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -151,8 +151,7 @@ public enum ChromeCookies {
             if replaceAll { try db.execute(sql: "DELETE FROM cookies WHERE top_frame_site_key = ''") }
             var n = 0
             for (i, c) in cookies.enumerated() {
-                let host = c.hostOnly ? (c.domain.hasPrefix(".") ? String(c.domain.dropFirst()) : c.domain)
-                                      : (c.domain.hasPrefix(".") ? c.domain : "." + c.domain)
+                let host = CookieRecord.hostKey(c.domain, hostOnly: c.hostOnly)
                 var plain = Data(c.value.utf8)
                 if version >= 24 { plain = ChromeCrypto.hostDigest(host) + plain }
                 let encrypted = try ChromeCrypto.encrypt(plain)

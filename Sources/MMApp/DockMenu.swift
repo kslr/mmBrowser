@@ -13,7 +13,7 @@ enum DockMenu {
         header.isEnabled = false
         menu.addItem(header)
         for p in active {
-            let item = NSMenuItem(title: "#\(p.seq) \(p.name)\(suffix(model.state(of: p.id)))", action: nil, keyEquivalent: "")
+            let item = NSMenuItem(title: "\(p.numberedName)\(suffix(model.state(of: p.id)))", action: nil, keyEquivalent: "")
             let sub = NSMenu()
             sub.addItem(ActionItem(L("common.bringToFront")) { model.activate(p.id) })
             sub.addItem(ActionItem(L("common.close")) { model.stop(p.id) })

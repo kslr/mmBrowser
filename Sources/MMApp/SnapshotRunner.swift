@@ -47,7 +47,7 @@ enum SnapshotRunner {
     static func selfTest(outputDir: URL) async {
         let model = AppModel.shared
         guard let store = model.store else { return }
-        var p = Profile(name: "自检-直连", startURLs: ["https://example.com/"])
+        var p = Profile(name: "自检-直连")
         p.allowDirect = true
         p.extraArgs = ["--window-position=-3000,-3000"]
         guard let saved = try? store.insert(p) else { print("selftest: " + L("snapshot.error.create")); return }
@@ -67,11 +67,11 @@ enum SnapshotRunner {
             return false
         }
         if !started {
-            print("selftest: " + L("snapshot.error \(model.lastError[saved.id] ?? model.alert?.message ?? L("snapshot.none"))"))
+            print("selftest: " + L("snapshot.error \(model.failures[saved.id]?.message ?? model.alert?.message ?? L("snapshot.none"))"))
             return
         }
         if case .running(let r) = model.state(of: saved.id) {
-            print("selftest: " + L("snapshot.running \(Int(r.pid)) \(Int(r.proxy?.port ?? 0)) \(r.exit?.summary ?? "-")"))
+            print("selftest: " + L("snapshot.running \(Int(r.pid)) \(Int(r.proxy.port)) \(r.exit.summary)"))
         }
         await render(ContentView().environment(model), size: CGSize(width: 1280, height: 720),
                      to: outputDir.appendingPathComponent("running.png"))
@@ -81,14 +81,13 @@ enum SnapshotRunner {
             if case .idle = model.state(of: saved.id) { return true }
             return false
         }
-        _ = await waitFor("Chrome 进程已退出", timeout: 10) { model.launcher?.runningPID(of: saved.id) == nil }
+        _ = await waitFor("Chrome 进程已退出", timeout: 10) { ProfileLock.runningPID(model.paths.profileDir(saved.id)) == nil }
     }
 
     /// 批量功能自检：全部通过 AppModel（界面用的同一套逻辑）。
     @discardableResult
     static func batchSelfTest() async -> Bool {
         let model = AppModel.shared
-        guard let store = model.store else { return false }
         var failures = 0
         func check(_ what: String, _ ok: Bool) {
             print("batch: \(what) \(ok ? "✓" : "✗")")
@@ -112,7 +111,7 @@ enum SnapshotRunner {
         template.extraArgs = ["--window-position=-3000,-3000"]
         template.tags = ["自检组"]
         let before = model.profiles.count
-        model.batchCreate(template: template, namePattern: "自检-{n}", startNumber: 1, digits: 2, count: 0, proxies: proxies)
+        model.batchCreate(template: template, names: NamePattern(pattern: "自检-{n}"), count: 0, proxies: proxies)
         _ = await waitFor(5) { model.profiles.count == before + 2 }  // 等数据库观察推送到位
         let created = model.profiles.filter { $0.name.hasPrefix("自检-0") }.sorted { $0.seq < $1.seq }
         check("批量新建 2 个，名称 自检-01/02，标签正确", created.count == 2 && model.profiles.count == before + 2
@@ -124,14 +123,13 @@ enum SnapshotRunner {
         guard created.count == 2 else { return false }
         let ids = created.map(\.id)
 
-        // 2. 批量检测 + 重复出口提示
-        model.checkMany(ids)
+        // 2. 新建后自动检测出口 + 重复出口提示（不手动触发检测）
         let checked = await waitFor(60) { ids.allSatisfy { model.fresh($0)?.lastExit != nil } && model.checking.isEmpty }
         _ = await waitFor(5) { ids.allSatisfy { model.profile($0)?.lastExit != nil } }  // 列表也推送到位
-        check("批量检测完成，都有出口信息", checked)
+        check("新建后自动检测完成，都有出口信息", checked)
         if !checked {
             for id in ids {
-                print("batch:   \(model.fresh(id)?.name ?? id) lastExit=\(model.fresh(id)?.lastExit?.ip ?? "nil") error=\(model.lastError[id] ?? "nil") checking=\(model.checking.contains(id))")
+                print("batch:   \(model.fresh(id)?.name ?? id) lastExit=\(model.fresh(id)?.lastExit?.ip ?? "nil") error=\(model.failures[id]?.message ?? "nil") checking=\(model.checking.contains(id))")
             }
         }
         if let a = model.profile(ids[0]) { check("两个环境出口相同 → 出口重复提示", !model.sharedExitIP(a).isEmpty) }
@@ -140,6 +138,8 @@ enum SnapshotRunner {
         model.assignProxies(ids, proxies: [proxies[1], proxies[0]], expiry: Date().addingTimeInterval(86_400 * 3))
         model.alert = nil
         check("互换代理成功", model.fresh(ids[0])?.proxy == proxies[1] && model.fresh(ids[1])?.proxy == proxies[0])
+        let rechecked = await waitFor(60) { ids.allSatisfy { model.fresh($0)?.lastExit != nil } && model.checking.isEmpty }
+        check("分配代理后自动重新检测出口", rechecked)
         _ = await waitFor(5) { model.expiringProxies().contains { ids.contains($0.id) } }
         check("设置到期日后出现在到期提醒里", model.expiringProxies().contains { ids.contains($0.id) })
 
@@ -153,7 +153,7 @@ enum SnapshotRunner {
 
         // 5. 复制
         let copy = model.duplicate(ids[0], copyData: false)
-        check("复制环境：不带代理、保留标签", copy?.proxy == nil && copy?.tags.contains("自检标签") == true)
+        check("复制环境：带代理、保留标签", copy?.proxy != nil && copy?.proxy == model.fresh(ids[0])?.proxy && copy?.tags.contains("自检标签") == true)
 
         // 6. CSV 往返
         let csv = ProfileCSV.export(ids.compactMap(model.fresh))
@@ -173,19 +173,18 @@ enum SnapshotRunner {
 
         // 8. 全部关闭
         await model.stopAll()
-        let allStopped = await waitFor(20) { ids.allSatisfy { model.launcher?.runningPID(of: $0) == nil } }
+        let allStopped = await waitFor(20) { ids.allSatisfy { ProfileLock.runningPID(model.paths.profileDir($0)) == nil } }
         check("全部关闭后没有残留 Chrome", allStopped)
 
         // 清理
         model.moveToTrash(ids + [copy?.id].compactMap { $0 })
         model.purge(ids + [copy?.id].compactMap { $0 })
-        _ = store
         print("batch: " + L("snapshot.batch.done \(failures)"))
         return failures == 0
     }
 
     static func seedDemoData(_ model: AppModel) {
-        guard let store = model.store, (try? store.profiles(includeDeleted: true).isEmpty) == true else { return }
+        guard let store = model.store, (try? store.profiles(.all).isEmpty) == true else { return }
         let samples: [(String, String, String, [String], String?)] = [
             ("客户A-广告户01", "socks5://u1:p@203.0.113.10:1080", "en-US", ["客户A", "广告"], "US"),
             ("客户A-广告户02", "http://u2:p@203.0.113.11:8080", "en-US", ["客户A", "广告", "重要"], "US"),
@@ -193,8 +192,7 @@ enum SnapshotRunner {
             ("测试环境", "socks5://u3:p@192.0.2.44:1080", "de-DE", [], nil),
         ]
         for (name, proxy, lang, tags, cc) in samples {
-            var p = Profile(name: name, proxy: try? ProxyConfig.parse(proxy), language: lang,
-                            startURLs: ["https://example.com/"], tags: tags,
+            var p = Profile(name: name, proxy: try? ProxyConfig.parse(proxy), language: lang, tags: tags,
                             notes: name.hasPrefix("客户A") ? "BC 7012345678" : "")
             if let saved = try? store.insert(p), let cc {
                 p = saved
@@ -210,13 +208,13 @@ enum SnapshotRunner {
         let all = (try? store.profiles()) ?? []
         let offsets: [Double] = [-2, 3, 60]
         for (p, d) in zip(all, offsets) {
-            _ = try? store.updateMany([p.id]) { $0.proxyExpiresAt = Date().addingTimeInterval(d * 86_400) }
+            try? store.updateMany([p.id]) { $0.proxyExpiresAt = Date().addingTimeInterval(d * 86_400) }
         }
-        try? store.setSetting("extensionLibrary", [
+        model.saveExtensionLibrary([
             ExtensionEntry(id: "ddkjiahejlhfcafbddmgiahcphecmpfh", name: "uBlock Origin Lite"),
             ExtensionEntry(id: "eimadpbcbfnmbkopoojfekhnkhdbieeh", name: ""),
         ])
-        if let first = all.first { _ = try? store.updateMany([first.id]) { $0.extensionIds = ["ddkjiahejlhfcafbddmgiahcphecmpfh"] } }
+        if let first = all.first { try? store.updateMany([first.id]) { $0.extensionIds = ["ddkjiahejlhfcafbddmgiahcphecmpfh"] } }
         model.refreshFromDisk()
     }
 

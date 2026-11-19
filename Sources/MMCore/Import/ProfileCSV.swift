@@ -3,7 +3,7 @@ import Foundation
 /// 环境 ⇄ CSV。导出用中文表头；导入同时认中文和英文表头，列的顺序随意，只有"名称"是必需的。
 public enum ProfileCSV {
     enum Column: String, CaseIterable {
-        case seq, name, tags, notes, proxy, proxyExpires, startURLs, alwaysOpenStartURLs
+        case seq, name, tags, notes, proxy, proxyExpires
         case language, timezone, geolocation, window, color, extraArgs, extensions, exitIP, exitCountry
 
         var title: String {
@@ -14,8 +14,6 @@ public enum ProfileCSV {
             case .notes: L("csv.header.notes")
             case .proxy: L("csv.header.proxy")
             case .proxyExpires: L("csv.header.proxyExpires")
-            case .startURLs: L("csv.header.startURLs")
-            case .alwaysOpenStartURLs: L("csv.header.alwaysOpenStartURLs")
             case .language: L("csv.header.language")
             case .timezone: L("csv.header.timezone")
             case .geolocation: L("csv.header.geolocation")
@@ -36,8 +34,6 @@ public enum ProfileCSV {
             case .notes: "备注"
             case .proxy: "代理"
             case .proxyExpires: "代理到期"
-            case .startURLs: "启动页"
-            case .alwaysOpenStartURLs: "每次打开启动页"
             case .language: "语言"
             case .timezone: "时区"
             case .geolocation: "定位权限"
@@ -53,10 +49,8 @@ public enum ProfileCSV {
         var aliases: [String] {
             [chineseAlias.lowercased(), rawValue.lowercased()] + {
                 switch self {
-                case .startURLs: ["start_urls", "urls", "url"]
                 case .proxyExpires: ["proxy_expires", "expires"]
                 case .extraArgs: ["extra_args", "args"]
-                case .alwaysOpenStartURLs: ["always_open_start_urls"]
                 case .exitIP: ["exit_ip", "ip"]
                 case .exitCountry: ["exit_country", "country"]
                 default: []
@@ -69,7 +63,6 @@ public enum ProfileCSV {
             return allCases.first { $0.aliases.contains(h) }
         }
     }
-
 
     static func formatDate(_ d: Date) -> String {
         let c = Calendar(identifier: .gregorian).dateComponents(in: .current, from: d)
@@ -94,12 +87,10 @@ public enum ProfileCSV {
                 case .notes: p.notes
                 case .proxy: p.proxy?.urlString ?? (p.allowDirect ? "direct" : "")
                 case .proxyExpires: p.proxyExpiresAt.map(formatDate) ?? ""
-                case .startURLs: p.startURLs.joined(separator: " ")
-                case .alwaysOpenStartURLs: p.alwaysOpenStartURLs ? L("csv.value.yes") : ""
                 case .language: p.language
                 case .timezone: p.timezone ?? "auto"
                 case .geolocation: p.geolocation == .block ? L("csv.value.block") : L("csv.value.ask")
-                case .window: p.windowWidth.map { "\($0)x\(p.windowHeight ?? 0)" } ?? ""
+                case .window: p.windowSize?.description ?? ""
                 case .color: p.themeColor ?? ""
                 case .extraArgs: p.extraArgs.joined(separator: " ")
                 case .extensions: p.extensionIds.joined(separator: ",")
@@ -157,11 +148,6 @@ public enum ProfileCSV {
                 guard let d = parseDate(v(.proxyExpires)) else { throw ImportError.badLine(line, L("error.csv.proxyExpires")) }
                 p.proxyExpiresAt = d
             }
-            p.startURLs = v(.startURLs).split(whereSeparator: { $0 == " " || $0 == "\n" || $0 == "|" })
-                .map(String.init).filter { !$0.isEmpty }
-                .map { $0.contains("://") ? $0 : "https://\($0)" }
-            p.alwaysOpenStartURLs = ["是", "true", "1", "yes", "y"].contains(v(.alwaysOpenStartURLs).lowercased())
-
             if !v(.language).isEmpty {
                 let lang = ["自动", "auto"].contains(v(.language).lowercased()) ? LanguageTag.auto : v(.language)
                 guard LanguageTag.isValidSetting(lang) else { throw ImportError.badLine(line, L("error.csv.language \(v(.language))")) }
@@ -178,16 +164,12 @@ public enum ProfileCSV {
             default: throw ImportError.badLine(line, L("error.csv.geolocation"))
             }
             if !v(.window).isEmpty {
-                let wh = v(.window).lowercased().split(whereSeparator: { $0 == "x" || $0 == "*" || $0 == "×" }).compactMap { Int($0) }
-                guard wh.count == 2, wh[0] >= 400, wh[1] >= 300 else { throw ImportError.badLine(line, L("error.csv.window")) }
-                p.windowWidth = wh[0]; p.windowHeight = wh[1]
+                guard let size = WindowSize(v(.window)) else { throw ImportError.badLine(line, L("error.csv.window")) }
+                p.windowSize = size
             }
-            let color = v(.color)
-            if !color.isEmpty {
-                guard color.range(of: "^#[0-9A-Fa-f]{6}$", options: .regularExpression) != nil else {
-                    throw ImportError.badLine(line, L("error.csv.color"))
-                }
-                p.themeColor = color.uppercased()
+            if !v(.color).isEmpty {
+                guard let color = ThemePalette.parse(v(.color)) else { throw ImportError.badLine(line, L("error.csv.color")) }
+                p.themeColor = color
             }
             p.extraArgs = v(.extraArgs).split(separator: " ").map(String.init).filter { !$0.isEmpty }
             p.extensionIds = v(.extensions).split(whereSeparator: { $0 == "," || $0 == " " })

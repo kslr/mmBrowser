@@ -18,10 +18,10 @@ struct ProfileDraft {
     var expiryEnabled = false
     var expiry = Date().addingTimeInterval(30 * 86_400)
 
-    var languageAuto = true
-    var language = "en-US"
-    var timezoneAuto = true
-    var timezone = TimeZone.current.identifier
+    /// LanguageTag.auto 表示跟随出口 IP
+    var language = LanguageTag.auto
+    /// nil 表示跟随出口 IP
+    var timezone: String?
     var geolocation = GeolocationPolicy.block
     var windowPreset = Self.defaultWindowPreset
     var windowWidthText = ""
@@ -45,8 +45,7 @@ struct ProfileDraft {
     }
 
     init(defaultLanguage: String, tags: [String] = []) {
-        languageAuto = defaultLanguage == LanguageTag.auto
-        language = languageAuto ? "en-US" : defaultLanguage
+        language = defaultLanguage
         self.tags = tags
     }
 
@@ -61,16 +60,13 @@ struct ProfileDraft {
             proxyMode = p.allowDirect ? .direct : .proxy
         }
         if let e = p.proxyExpiresAt { expiryEnabled = true; expiry = e }
-        languageAuto = p.language == LanguageTag.auto
-        language = languageAuto ? (CountryLocale.recommendedLanguage(for: p.lastExit?.countryCode) ?? "en-US") : p.language
-        timezoneAuto = p.timezone == nil
-        timezone = p.timezone ?? p.lastExit?.timezone ?? TimeZone.current.identifier
+        language = p.language
+        timezone = p.timezone
         geolocation = p.geolocation
-        if let w = p.windowWidth, let h = p.windowHeight {
-            let key = "\(w)x\(h)"
-            windowPreset = Self.windowPresets.contains(key) ? key : Self.customWindowPreset
-            windowWidthText = String(w)
-            windowHeightText = String(h)
+        if let size = p.windowSize {
+            windowPreset = Self.windowPresets.contains(size.description) ? size.description : Self.customWindowPreset
+            windowWidthText = String(size.width)
+            windowHeightText = String(size.height)
         }
         themeAuto = p.themeColor == nil
         themeColor = Color(hex: p.effectiveThemeColor)
@@ -86,6 +82,11 @@ struct ProfileDraft {
                            username: username, password: password)
     }
 
+    /// 按当前填写能检测的上游（代理没填完整时为 nil）。
+    var upstream: Upstream? {
+        proxyMode == .direct ? .direct : proxyConfig.map(Upstream.proxy)
+    }
+
     mutating func fill(from proxy: ProxyConfig) {
         proxyMode = .proxy
         proxyKind = proxy.kind
@@ -95,7 +96,7 @@ struct ProfileDraft {
         password = proxy.password ?? ""
     }
 
-    /// 校验并写入 profile。名称可以为空（保存时自动命名）。启动页不在表单里编辑，保持原值。
+    /// 校验并写入 profile。名称可以为空（保存时自动命名）。
     func apply(to p: inout Profile) throws {
         p.name = name.trimmingCharacters(in: .whitespaces)
         p.tags = tags
@@ -116,31 +117,20 @@ struct ProfileDraft {
             p.proxyExpiresAt = nil
         }
 
-        if languageAuto {
-            p.language = LanguageTag.auto
-        } else {
-            guard LanguageTag.isValid(language) else { throw DraftError(L("editor.error.language \(language)")) }
-            p.language = language
-        }
-        if timezoneAuto {
-            p.timezone = nil
-        } else {
-            guard TimeZone(identifier: timezone) != nil else { throw DraftError(L("editor.error.timezone \(timezone)")) }
-            p.timezone = timezone
-        }
+        guard LanguageTag.isValidSetting(language) else { throw DraftError(L("editor.error.language \(language)")) }
+        p.language = language
+        if let timezone, TimeZone(identifier: timezone) == nil { throw DraftError(L("editor.error.timezone \(timezone)")) }
+        p.timezone = timezone
         p.geolocation = geolocation
 
         switch windowPreset {
         case Self.defaultWindowPreset:
-            p.windowWidth = nil; p.windowHeight = nil
+            p.windowSize = nil
         case Self.customWindowPreset:
-            guard let w = Int(windowWidthText), let h = Int(windowHeightText), w >= 400, h >= 300 else {
-                throw DraftError(L("editor.error.window"))
-            }
-            p.windowWidth = w; p.windowHeight = h
+            guard let size = WindowSize("\(windowWidthText)x\(windowHeightText)") else { throw DraftError(L("editor.error.window")) }
+            p.windowSize = size
         default:
-            let parts = windowPreset.split(separator: "x").compactMap { Int($0) }
-            p.windowWidth = parts[0]; p.windowHeight = parts[1]
+            p.windowSize = WindowSize(windowPreset)
         }
         p.themeColor = themeAuto ? nil : themeColor.hexString
         p.extraArgs = extraArgsText.split(whereSeparator: \.isNewline)
@@ -170,6 +160,36 @@ enum LanguageOptions {
     }
 }
 
+/// 语言选择：跟随出口 IP（auto）或常用语言。
+struct LanguagePicker: View {
+    var title = L("common.language")
+    @Binding var language: String
+
+    var body: some View {
+        Picker(title, selection: $language) {
+            Text(L("common.followExitIP.recommended")).tag(LanguageTag.auto)
+            Divider()
+            if language != LanguageTag.auto, !LanguageOptions.codes.contains(language) {
+                Text(language).tag(language)
+            }
+            ForEach(LanguageOptions.codes, id: \.self) { Text(LanguageOptions.label($0)).tag($0) }
+        }
+    }
+}
+
+/// 时区选择：跟随出口 IP（nil）或指定时区。
+struct TimezonePicker: View {
+    @Binding var timezone: String?
+
+    var body: some View {
+        Picker(L("common.timezone"), selection: $timezone) {
+            Text(L("common.followExitIP.recommended")).tag(String?.none)
+            Divider()
+            ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag(String?.some($0)) }
+        }
+    }
+}
+
 struct ProfileEditorView: View {
     /// 表单高度（截图自检时会临时调高，以便看到全部内容）。
     @MainActor static var height: CGFloat = 660
@@ -185,7 +205,6 @@ struct ProfileEditorView: View {
     @State private var proxyParseError: String?
     @State private var showProxyFields = false
     @State private var showMore = false
-    @State private var showPassword = false
     @State private var checkResult: Result<ExitInfo, Error>?
     @State private var checking = false
     @State private var error: String?
@@ -225,7 +244,7 @@ struct ProfileEditorView: View {
         Section(L("editor.section.basic")) {
             TextField(L("editor.name"), text: $draft.name, prompt: Text(isNew ? L("editor.name.prompt") : ""))
             LabeledContent(L("editor.tags")) {
-                TagTokenField(tags: $draft.tags, suggestions: model.allTags, placeholder: L("editor.tags.placeholder"))
+                TagEditor(tags: $draft.tags, suggestions: model.tagsByUsage, placeholder: L("editor.tags.placeholder"))
             }
             TextField(L("editor.notes"), text: $draft.notes, prompt: Text(L("common.optional")), axis: .vertical).lineLimit(1...3)
         }
@@ -243,8 +262,14 @@ struct ProfileEditorView: View {
 
             if draft.proxyMode == .proxy {
                 TextField(L("editor.proxy.field"), text: $proxyText,
-                          prompt: Text(draft.proxyConfig == nil ? L("editor.proxy.prompt") : L("editor.proxy.prompt.replace")))
-                    .onChange(of: proxyText) { parseProxyText() }
+                          prompt: Text(draft.proxyConfig == nil ? L("editor.proxy.prompt") : L("editor.proxy.prompt.replace")),
+                          axis: .vertical)
+                    .lineLimit(1...4)
+                    .onChange(of: proxyText) {
+                        let t = proxyText.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if t != proxyText { proxyText = t; return }
+                        parseProxyText()
+                    }
                 proxySummary
                 ExpandRow(title: L("editor.proxy.fields"), subtitle: nil, expanded: $showProxyFields)
                 if showProxyFields {
@@ -256,15 +281,7 @@ struct ProfileEditorView: View {
                     TextField(L("editor.proxy.host"), text: $draft.host)
                     TextField(L("editor.proxy.port"), text: $draft.portText)
                     TextField(L("editor.proxy.username"), text: $draft.username, prompt: Text(L("common.optional")))
-                    HStack {
-                        if showPassword {
-                            TextField(L("editor.proxy.password"), text: $draft.password, prompt: Text(L("common.optional")))
-                        } else {
-                            SecureField(L("editor.proxy.password"), text: $draft.password, prompt: Text(L("common.optional")))
-                        }
-                        Button { showPassword.toggle() } label: { Image(systemName: showPassword ? "eye.slash" : "eye") }
-                            .buttonStyle(.borderless)
-                    }
+                    TextField(L("editor.proxy.password"), text: $draft.password, prompt: Text(L("common.optional")))
                 }
                 Toggle(L("editor.proxy.expiry.toggle"), isOn: $draft.expiryEnabled)
                 if draft.expiryEnabled {
@@ -277,7 +294,7 @@ struct ProfileEditorView: View {
 
             HStack(alignment: .top) {
                 Button(checking ? L("editor.proxy.checking") : L("editor.proxy.check")) { check() }
-                    .disabled(checking || (draft.proxyMode == .proxy && draft.proxyConfig == nil))
+                    .disabled(checking || draft.upstream == nil)
                 if checking { ProgressView().controlSize(.small) }
                 Spacer()
                 checkResultView
@@ -298,16 +315,8 @@ struct ProfileEditorView: View {
         } else if let cfg = draft.proxyConfig {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                Text(cfg.kind == .socks5 ? "SOCKS5" : "HTTP").font(.caption.weight(.medium))
-                    .padding(.horizontal, 5).padding(.vertical, 1)
-                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 3))
-                Text(verbatim: "\(cfg.host):\(cfg.port)").textSelection(.enabled)
-                if let u = cfg.username {
-                    Text(L("editor.proxy.summary.username \(u)")).foregroundStyle(.secondary)
-                    Text(cfg.password == nil ? L("editor.proxy.summary.noPassword") : L("editor.proxy.summary.password")).foregroundStyle(.secondary)
-                } else {
-                    Text(L("editor.proxy.summary.noAuth")).foregroundStyle(.secondary)
-                }
+                // 完整地址（含密码），方便直接选中复制
+                Text(verbatim: cfg.urlString).textSelection(.enabled).lineLimit(2).truncationMode(.middle)
                 Spacer()
             }
             .font(.callout)
@@ -338,30 +347,11 @@ struct ProfileEditorView: View {
 
     private var environmentSection: some View {
         Section {
-            Picker(L("common.language"), selection: Binding(
-                get: { draft.languageAuto ? LanguageTag.auto : draft.language },
-                set: { v in
-                    if v == LanguageTag.auto { draft.languageAuto = true } else { draft.languageAuto = false; draft.language = v }
-                })) {
-                Text(L("common.followExitIP.recommended")).tag(LanguageTag.auto)
-                Divider()
-                if !draft.languageAuto, !LanguageOptions.codes.contains(draft.language) {
-                    Text(draft.language).tag(draft.language)
-                }
-                ForEach(LanguageOptions.codes, id: \.self) { Text(LanguageOptions.label($0)).tag($0) }
-            }
-            Picker(L("common.timezone"), selection: Binding(
-                get: { draft.timezoneAuto ? "auto" : draft.timezone },
-                set: { v in
-                    if v == "auto" { draft.timezoneAuto = true } else { draft.timezoneAuto = false; draft.timezone = v }
-                })) {
-                Text(L("common.followExitIP.recommended")).tag("auto")
-                Divider()
-                ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
-            }
-            if let e = lastExit, draft.languageAuto || draft.timezoneAuto {
-                let lang = draft.languageAuto ? LanguageTag.resolve(LanguageTag.auto, countryCode: e.countryCode) : draft.language
-                let tz = draft.timezoneAuto ? (e.timezone ?? "?") : draft.timezone
+            LanguagePicker(language: $draft.language)
+            TimezonePicker(timezone: $draft.timezone)
+            if let e = lastExit, draft.language == LanguageTag.auto || draft.timezone == nil {
+                let lang = LanguageTag.resolve(draft.language, countryCode: e.countryCode)
+                let tz = draft.timezone ?? e.timezone ?? "?"
                 LabeledContent(L("editor.environment.current")) {
                     Text(verbatim: "\(LanguageOptions.label(lang)) · \(tz)").foregroundStyle(.secondary)
                 }
@@ -452,12 +442,12 @@ struct ProfileEditorView: View {
                         draft.extensionIds.removeAll { $0 == e.id }
                         if on { draft.extensionIds.append(e.id) }
                     })) {
-                    Text(L("editor.extension \(e.name.isEmpty ? String(e.id.prefix(12)) + "…" : e.name)")).help(e.id)
+                    Text(L("editor.extension \(model.extensionName(e.id))")).help(e.id)
                 }
             }
             ForEach(draft.extensionIds.filter { id in !lib.contains { $0.id == id } }, id: \.self) { id in
                 Toggle(isOn: Binding(get: { true }, set: { if !$0 { draft.extensionIds.removeAll { $0 == id } } })) {
-                    Text(L("editor.extension \(String(id.prefix(12)) + "…")")).help(id)
+                    Text(L("editor.extension \(model.extensionName(id))")).help(id)
                 }
             }
         }
@@ -495,10 +485,7 @@ struct ProfileEditorView: View {
     }
 
     private func check() {
-        let upstream: Upstream
-        if draft.proxyMode == .direct { upstream = .direct }
-        else if let cfg = draft.proxyConfig { upstream = .proxy(cfg) }
-        else { return }
+        guard let upstream = draft.upstream else { return }
         checking = true
         checkResult = nil
         Task {
@@ -520,6 +507,9 @@ struct ProfileEditorView: View {
             if case .success(let info) = checkResult, saved.proxy == draft.proxyConfig, saved.lastExit != info {
                 try? model.store?.recordExit(info, for: saved.id)
             }
+            // 新建，或代理换了（保存时已清掉旧的出口结果），就自动检测一次
+            let proxyChanged = original.map { $0.upstream != saved.upstream } ?? true
+            if proxyChanged { model.autoCheck([saved.id]) }
             dismiss()
         } catch {
             self.error = error.localizedDescription

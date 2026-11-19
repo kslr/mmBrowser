@@ -94,14 +94,14 @@ public enum ExtensionManager {
             var remaining = toEnable
             while !remaining.isEmpty, Date() < deadline {
                 for id in remaining {
-                    let info = try await headless.evaluate(
+                    let info = try await headless.cdp.evaluate(
                         "new Promise(r => chrome.management.get('\(id)', e => r(chrome.runtime.lastError ? 'missing' : (e.enabled ? 'enabled' : 'disabled'))))",
                         sessionId: session)
                     switch info.string {
                     case "enabled":
                         remaining.remove(id)
                     case "disabled":
-                        _ = try await headless.evaluate(
+                        _ = try await headless.cdp.evaluate(
                             "new Promise(r => chrome.management.setEnabled('\(id)', true, () => r(chrome.runtime.lastError ? chrome.runtime.lastError.message : 'ok')))",
                             sessionId: session)
                     default:

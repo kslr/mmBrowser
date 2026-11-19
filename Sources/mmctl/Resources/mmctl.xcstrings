@@ -987,23 +987,6 @@
         }
       }
     },
-    "cli.profile.everyLaunch" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " (every launch)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "（每次启动都打开）"
-          }
-        }
-      }
-    },
     "cli.profile.exit %@ %@ %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1055,23 +1038,6 @@
         }
       }
     },
-    "cli.profile.firstLaunch" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : " (first launch only)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "（仅首次打开）"
-          }
-        }
-      }
-    },
     "cli.profile.geolocation %@" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1085,23 +1051,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "  定位权限:   %@"
-          }
-        }
-      }
-    },
-    "cli.profile.help.alwaysOpenUrls" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open start URLs on every launch: true or false"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "每次启动都打开启动页：true 或 false"
           }
         }
       }
@@ -1293,23 +1242,6 @@
         }
       }
     },
-    "cli.profile.help.urls" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start URL; repeatable (opens only on the first launch by default)"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "启动页，可以重复（默认只在第一次打开环境时打开）"
-          }
-        }
-      }
-    },
     "cli.profile.help.window" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -1408,23 +1340,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "  [运行中 PID %lld]"
-          }
-        }
-      }
-    },
-    "cli.profile.startURLs %@ %@" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "  Start URLs:     %@%@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "  启动页:    %@%@"
           }
         }
       }

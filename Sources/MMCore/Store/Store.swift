@@ -2,14 +2,11 @@ import Foundation
 import GRDB
 
 public enum StoreError: Error, LocalizedError, Equatable {
-    case proxyAlreadyBound(profileName: String, seq: Int)
     case notFound(String)
     case ambiguous(String, [String])
 
     public var errorDescription: String? {
         switch self {
-        case .proxyAlreadyBound(let name, let seq):
-            L("error.store.proxyBound \(seq) \(name)")
         case .notFound(let ref):
             L("error.store.notFound \(ref)")
         case .ambiguous(let ref, let names):
@@ -75,7 +72,7 @@ public final class Store: Sendable {
                 t.column("lastOpenedAt", .datetime)
                 t.column("deletedAt", .datetime)
             }
-            // 一个代理只能绑定一个未删除的环境（兜底约束，正常情况下先用 proxyOwner 检查给出友好提示）
+            // 曾经限制一个代理只能绑定一个环境，v5 已取消
             try db.execute(sql: """
                 CREATE UNIQUE INDEX profile_proxy_unique
                 ON profile(lower(proxyHost), proxyPort, IFNULL(proxyUsername, ''))
@@ -147,18 +144,32 @@ public final class Store: Sendable {
                 WHERE proxyHost IS NOT NULL AND deletedAt IS NULL
                 """)
         }
+        // 取消"一个代理只能对应一个环境"的限制
+        m.registerMigration("v5") { db in
+            try db.execute(sql: "DROP INDEX IF EXISTS profile_proxy_unique")
+        }
+        // 环境不再有自己的启动页（每次启动打开全局的检测页）
+        m.registerMigration("v6") { db in
+            try db.execute(sql: "ALTER TABLE profile DROP COLUMN startURLs")
+            try db.execute(sql: "ALTER TABLE profile DROP COLUMN alwaysOpenStartURLs")
+        }
         return m
     }
 
     // MARK: - 环境
 
-    public func profiles(includeDeleted: Bool = false, onlyDeleted: Bool = false) throws -> [Profile] {
+    public enum Scope: Sendable {
+        case active, trash, all
+    }
+
+    /// 按序号排列的环境：未删除的、回收站里的，或者全部。
+    public func profiles(_ scope: Scope = .active) throws -> [Profile] {
         try db.read { db in
-            var request = Profile.order(Column("seq"))
-            if onlyDeleted {
-                request = request.filter(Column("deletedAt") != nil)
-            } else if !includeDeleted {
-                request = request.filter(Column("deletedAt") == nil)
+            let ordered = Profile.order(Column("seq"))
+            let request = switch scope {
+            case .active: ordered.filter(Column("deletedAt") == nil)
+            case .trash: ordered.filter(Column("deletedAt") != nil)
+            case .all: ordered
             }
             return try request.fetchAll(db)
         }
@@ -170,7 +181,7 @@ public final class Store: Sendable {
 
     /// 按引用查找：`#12` / `12`（序号）、id 或 id 前缀（≥4 位）、名称（完全匹配）。
     public func resolve(_ ref: String, includeDeleted: Bool = false) throws -> Profile {
-        let all = try profiles(includeDeleted: includeDeleted)
+        let all = try profiles(includeDeleted ? .all : .active)
         let trimmed = ref.hasPrefix("#") ? String(ref.dropFirst()) : ref
         if let seq = Int(trimmed), let p = all.first(where: { $0.seq == seq }) { return p }
         if let p = all.first(where: { $0.id == ref }) { return p }
@@ -180,50 +191,61 @@ public final class Store: Sendable {
         if ref.count >= 4 {
             let byPrefix = all.filter { $0.id.hasPrefix(ref.lowercased()) }
             if byPrefix.count == 1 { return byPrefix[0] }
-            if byPrefix.count > 1 { throw StoreError.ambiguous(ref, byPrefix.map { "#\($0.seq) \($0.name)" }) }
+            if byPrefix.count > 1 { throw StoreError.ambiguous(ref, byPrefix.map(\.numberedName)) }
         }
         throw StoreError.notFound(ref)
     }
 
-    /// 返回已经绑定这个代理的其他未删除环境（没有则 nil）。
-    public func proxyOwner(of proxy: ProxyConfig, excluding profileId: String? = nil) throws -> Profile? {
-        try db.read { db in
-            var request = Profile
-                .filter(Column("deletedAt") == nil)
-                .filter(sql: "lower(proxyHost) = lower(?) AND proxyPort = ? AND IFNULL(proxyUsername, '') = ?",
-                        arguments: [proxy.host, proxy.port, proxy.username ?? ""])
-            if let profileId { request = request.filter(Column("id") != profileId) }
-            return try request.fetchOne(db)
-        }
-    }
-
-    /// 插入新环境，自动分配序号。
+    /// 插入新环境，自动分配序号；名称留空时命名为"环境-序号"。
     @discardableResult
     public func insert(_ profile: Profile) throws -> Profile {
+        try db.write { try Self.insert(profile, into: $0) }
+    }
+
+    /// 一次插入一批（同一个事务，要么全部成功，要么都不插入）。
+    @discardableResult
+    public func insertMany(_ items: [Profile]) throws -> [Profile] {
+        try db.write { db in try items.map { try Self.insert($0, into: db) } }
+    }
+
+    private static func insert(_ profile: Profile, into db: Database) throws -> Profile {
         var p = profile
-        if let proxy = p.proxy, let owner = try proxyOwner(of: proxy) {
-            throw StoreError.proxyAlreadyBound(profileName: owner.name, seq: owner.seq)
-        }
-        try db.write { db in
-            let maxSeq = try Int.fetchOne(db, sql: "SELECT MAX(seq) FROM profile") ?? 0
-            p.seq = maxSeq + 1
-            p.createdAt = Date()
-            p.updatedAt = p.createdAt
-            try p.insert(db)
-        }
+        p.seq = (try Int.fetchOne(db, sql: "SELECT MAX(seq) FROM profile") ?? 0) + 1
+        fillDefaultName(&p)
+        p.createdAt = Date()
+        p.updatedAt = p.createdAt
+        try p.insert(db)
         return p
     }
 
     public func update(_ profile: Profile) throws {
-        var p = profile
-        if let proxy = p.proxy, !p.isDeleted, let owner = try proxyOwner(of: proxy, excluding: p.id) {
-            throw StoreError.proxyAlreadyBound(profileName: owner.name, seq: owner.seq)
-        }
-        p.updatedAt = Date()
-        try db.write { try p.update($0) }
+        try db.write { try Self.update(profile, in: $0) }
     }
 
-    /// 只更新检测结果和打开时间这类运行时字段，不触发代理唯一性检查。
+    /// 批量修改：transform 改完后在同一个事务里保存。
+    public func updateMany(_ ids: [String], _ transform: (inout Profile) -> Void) throws {
+        try db.write { db in
+            for id in ids {
+                guard var p = try Profile.fetchOne(db, key: id) else { continue }
+                transform(&p)
+                try Self.update(p, in: db)
+            }
+        }
+    }
+
+    private static func update(_ profile: Profile, in db: Database) throws {
+        var p = profile
+        fillDefaultName(&p)
+        p.updatedAt = Date()
+        try p.update(db)
+    }
+
+    private static func fillDefaultName(_ p: inout Profile) {
+        p.name = p.name.trimmingCharacters(in: .whitespaces)
+        if p.name.isEmpty { p.name = L("profile.defaultName \(p.seq)") }
+    }
+
+    /// 只更新检测结果和打开时间这类运行时字段，不改 updatedAt。
     public func recordExit(_ info: ExitInfo, for profileId: String) throws {
         let json = String(decoding: try JSONEncoder.store.encode(info), as: UTF8.self)
         try db.write { db in
@@ -244,11 +266,11 @@ public final class Store: Sendable {
         }
     }
 
-    /// 从回收站恢复。代理如果已经被别的环境占用，会抛错。
+    /// 从回收站恢复。
     public func restore(_ profileId: String) throws {
-        guard var p = try profile(id: profileId) else { throw StoreError.notFound(profileId) }
-        p.deletedAt = nil
-        try update(p)
+        try db.write { db in
+            try db.execute(sql: "UPDATE profile SET deletedAt = NULL WHERE id = ?", arguments: [profileId])
+        }
     }
 
     /// 彻底删除：数据库记录和环境目录一起删。
@@ -260,42 +282,13 @@ public final class Store: Sendable {
         }
     }
 
-    // MARK: - 批量
-
-    /// 批量插入，逐个检查代理唯一性（包括这一批内部互相重复）。返回成功的和失败的（名称 + 原因）。
-    public func insertMany(_ items: [Profile]) throws -> (inserted: [Profile], failed: [(String, String)]) {
-        var inserted: [Profile] = []
-        var failed: [(String, String)] = []
-        for p in items {
-            do {
-                inserted.append(try insert(p))
-            } catch {
-                failed.append((p.name, error.localizedDescription))
-            }
-        }
-        return (inserted, failed)
-    }
-
-    /// 批量修改。transform 改完后逐个保存，代理冲突等错误会收集起来返回。
-    public func updateMany(_ ids: [String], _ transform: (inout Profile) -> Void) throws -> [(String, String)] {
-        var failed: [(String, String)] = []
-        for id in ids {
-            guard var p = try profile(id: id) else { continue }
-            transform(&p)
-            do { try update(p) } catch { failed.append((p.name, error.localizedDescription)) }
-        }
-        return failed
-    }
-
-    /// 复制环境：设置全部复制，代理不复制（一个代理只能对应一个环境）。
+    /// 复制环境：设置（包括代理）全部复制。
     /// copyData 为 true 时连浏览器数据（登录状态、Cookie、保存的密码、扩展）一起复制。
-    public func duplicate(_ id: String, name: String? = nil, copyData: Bool = false) throws -> Profile {
+    public func duplicate(_ id: String, copyData: Bool = false) throws -> Profile {
         guard let src = try profile(id: id) else { throw StoreError.notFound(id) }
         var p = src
         p.id = UUID().uuidString.lowercased()
-        p.name = name ?? L("profile.duplicateName \(src.name)")
-        p.proxy = nil
-        p.proxyExpiresAt = nil
+        p.name = L("profile.duplicateName \(src.name)")
         p.lastExit = nil
         p.lastOpenedAt = nil
         p.deletedAt = nil
@@ -342,17 +335,12 @@ public final class Store: Sendable {
 
     // MARK: - 标签
 
-    /// 所有未删除环境用到的标签。
-    public func allTags() throws -> [String] {
-        Array(Set(try profiles().flatMap(\.tags))).sorted()
-    }
-
     /// 重命名标签（所有环境，含回收站）。新名称已存在时两者合并。
     public func renameTag(_ old: String, to new: String) throws {
         let name = new.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty, name != old else { return }
-        let ids = try profiles(includeDeleted: true).filter { $0.tags.contains(old) }.map(\.id)
-        _ = try updateMany(ids) { p in
+        let ids = try profiles(.all).filter { $0.tags.contains(old) }.map(\.id)
+        try updateMany(ids) { p in
             var seen = Set<String>()
             p.tags = p.tags.map { $0 == old ? name : $0 }.filter { seen.insert($0).inserted }
         }
@@ -360,8 +348,8 @@ public final class Store: Sendable {
 
     /// 从所有环境上移除这个标签。
     public func deleteTag(_ tag: String) throws {
-        let ids = try profiles(includeDeleted: true).filter { $0.tags.contains(tag) }.map(\.id)
-        _ = try updateMany(ids) { $0.tags.removeAll { $0 == tag } }
+        let ids = try profiles(.all).filter { $0.tags.contains(tag) }.map(\.id)
+        try updateMany(ids) { $0.tags.removeAll { $0 == tag } }
     }
 }
 

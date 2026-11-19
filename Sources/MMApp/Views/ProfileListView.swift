@@ -35,6 +35,9 @@ struct ProfileListView: View {
     @State private var sortOrder = [KeyPathComparator(\ProfileRow.seq)]
     @State private var confirmPurge: [String]?
     @State private var pendingCSV: [ProfileCSV.Row]?
+    /// 右键"新建标签…"：要加标签的环境和输入的名称
+    @State private var newTagIds: [String]?
+    @State private var newTagName = ""
     /// 列的显示、顺序和宽度（右键表头调整），所有列表共用一份
     @AppStorage("profileList.columns") private var columns = TableColumnCustomization<ProfileRow>()
 
@@ -67,7 +70,7 @@ struct ProfileListView: View {
                 HStack(spacing: 6) {
                     Circle().fill(Color(hex: r.profile.effectiveThemeColor)).frame(width: 8, height: 8)
                     Text(r.name).lineLimit(1).help(r.name)
-                    StatusIcon(state: model.state(of: r.id), error: model.lastError[r.id])
+                    StatusIcon(state: model.state(of: r.id), error: model.failures[r.id]?.message)
                 }
             }
             .width(min: 120, ideal: 220)
@@ -76,19 +79,16 @@ struct ProfileListView: View {
 
             // 状态已经以图标显示在名称后面，这一列默认隐藏，需要看启动阶段等文字时再打开
             TableColumn(L("list.column.status")) { r in
-                StatusBadge(state: model.state(of: r.id), error: model.lastError[r.id])
+                StatusBadge(state: model.state(of: r.id), error: model.failures[r.id]?.message)
             }
             .width(min: 70, ideal: 90, max: 140)
             .customizationID("status")
             .defaultVisibility(.hidden)
 
             TableColumn(L("list.column.tags"), value: \.tagsText) { r in
-                Text(r.tagsText.isEmpty ? "—" : r.tagsText)
-                    .lineLimit(1)
-                    .foregroundStyle(r.tagsText.isEmpty ? .tertiary : .primary)
-                    .help(r.tagsText)
+                TagChipsLine(tags: r.profile.tags)
             }
-            .width(min: 60, ideal: 100, max: 200)
+            .width(min: 60, ideal: 130, max: 260)
             .customizationID("tags")
 
             TableColumn(L("list.column.proxy")) { r in
@@ -103,7 +103,7 @@ struct ProfileListView: View {
                         Text(r.profile.allowDirect ? L("common.direct") : L("common.notConfigured")).foregroundStyle(.orange)
                     }
                 }
-                .help(r.profile.proxy?.displayString ?? "")
+                .help(r.profile.proxy?.urlString ?? "")
             }
             .width(min: 90, ideal: 140, max: 220)
             .customizationID("proxy")
@@ -169,7 +169,7 @@ struct ProfileListView: View {
             if !isTrash, !expiring.isEmpty {
                 HStack {
                     Image(systemName: "calendar.badge.exclamationmark").foregroundStyle(.orange)
-                    let names = expiring.prefix(3).map { "#\($0.seq) \($0.name)" }.joined(separator: L("common.listSeparator"))
+                    let names = expiring.prefix(3).map(\.numberedName).joined(separator: L("common.listSeparator"))
                         + (expiring.count > 3 ? L("common.ellipsis") : "")
                     Text(L("list.expiringBanner \(expiring.count) \(names)"))
                         .lineLimit(1)
@@ -181,6 +181,12 @@ struct ProfileListView: View {
             }
         }
         .onChange(of: scope) { selection.removeAll() }
+        .alert(L("list.newTag.title \(newTagIds?.count ?? 0)"), isPresented: Binding(
+            get: { newTagIds != nil }, set: { if !$0 { newTagIds = nil } })) {
+            TextField(L("list.newTag.field"), text: $newTagName)
+            Button(L("list.newTag.confirm")) { if let ids = newTagIds { model.addTag(newTagName, to: ids) } }
+            Button(L("common.cancel"), role: .cancel) {}
+        }
     }
 
     private var csvSummary: String {
@@ -208,7 +214,7 @@ struct ProfileListView: View {
         guard let e = p.lastExit else { return "" }
         var s = "\(e.summary)\n\(e.org ?? "")\n" + L("list.exit.checkedAt \(e.checkedAt.formatted())")
         if !shared.isEmpty {
-            let names = shared.map { "#\($0.seq) \($0.name)" }.joined(separator: L("common.listSeparator"))
+            let names = shared.map(\.numberedName).joined(separator: L("common.listSeparator"))
             s += "\n\n" + L("list.exit.shared \(names)")
         }
         return s
@@ -264,6 +270,23 @@ struct ProfileListView: View {
         }
     }
 
+    /// 右键"标签"子菜单：全部选中的环境都有的标签打勾，点一下加上 / 去掉；只有部分环境有的显示个数，点一下给全部加上。
+    private func tagMenu(for ids: [String]) -> some View {
+        let profiles = ids.compactMap(model.profile)
+        return Menu(L("list.menu.tags")) {
+            ForEach(model.allTags, id: \.self) { t in
+                let n = profiles.filter { $0.tags.contains(t) }.count
+                Toggle(isOn: Binding(
+                    get: { n == profiles.count },
+                    set: { $0 ? model.addTag(t, to: ids) : model.removeTag(t, from: ids) })) {
+                    Text(n > 0 && n < profiles.count ? L("list.menu.tag.partial \(t) \(n) \(profiles.count)") : t)
+                }
+            }
+            if !model.allTags.isEmpty { Divider() }
+            Button(L("list.menu.newTag")) { newTagName = ""; newTagIds = ids }
+        }
+    }
+
     @ViewBuilder
     private func menu(for ids: [String]) -> some View {
         if ids.isEmpty {
@@ -284,17 +307,7 @@ struct ProfileListView: View {
             Button(L("list.checkProxy")) { model.checkMany(ids) }
             Button(L("common.assignProxies")) { batch = .assignProxies(ids) }
             Button(L("list.menu.setExpiry")) { batch = .expiry(ids) }
-            Menu(L("list.menu.addTag")) {
-                ForEach(model.allTags, id: \.self) { t in Button(t) { model.addTag(t, to: ids) } }
-                if !model.allTags.isEmpty { Divider() }
-                Button(L("list.menu.newTag")) { batch = .edit(ids) }
-            }
-            let present = Array(Set(ids.compactMap(model.profile).flatMap(\.tags))).sorted()
-            if !present.isEmpty {
-                Menu(L("list.menu.removeTag")) {
-                    ForEach(present, id: \.self) { t in Button(t) { model.removeTag(t, from: ids) } }
-                }
-            }
+            tagMenu(for: ids)
             if ids.count == 1 {
                 Menu(L("list.menu.duplicate")) {
                     Button(L("list.menu.duplicate.settings")) { model.duplicate(ids[0], copyData: false) }
@@ -308,12 +321,7 @@ struct ProfileListView: View {
                 }
                 .disabled(anyActive)
                 Button(L("list.menu.revealInFinder")) { model.revealInFinder(ids[0]) }
-                Button(L("common.copyProxyAddress")) {
-                    if let p = model.profile(ids[0])?.proxy {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(p.urlString, forType: .string)
-                    }
-                }
+                Button(L("common.copyProxyAddress")) { model.copyProxyAddress(ids[0]) }
             }
             Divider()
             Button(L("list.menu.exportCSV")) { model.exportCSV(ids) }
@@ -374,7 +382,7 @@ struct StatusBadge: View {
     static func detail(_ state: RunState, error: String?) -> String {
         switch state {
         case .idle: error ?? ""
-        case .running(let r): L("status.running.help \(Int(r.pid)) \(Int(r.proxy?.port ?? 0)) \(r.timezone)")
+        case .running(let r): L("status.running.help \(Int(r.pid)) \(Int(r.proxy.port)) \(r.timezone)")
         case .orphan(let pid): L("status.orphan.help \(Int(pid))")
         default: ""
         }

@@ -96,36 +96,37 @@ struct BatchCreateView: View {
     @Environment(\.dismiss) private var dismiss
     let tag: String?
 
-    @State private var namePattern = L("batchCreate.defaultPattern")
-    @State private var startNumber = 1
-    @State private var digits = 2
+    @State private var names = NamePattern(pattern: L("batchCreate.defaultPattern"))
     @State private var count = 5
     @State private var proxyText = ""
     @State private var proxyKind = ProxyConfig.Kind.socks5
-    @State private var draft = ProfileDraft(defaultLanguage: LanguageTag.auto)
+    @State private var tags: [String] = []
+    @State private var notes = ""
     @State private var language = LanguageTag.auto
+    @State private var timezone: String?
     @State private var expiryEnabled = false
     @State private var expiry = Date().addingTimeInterval(30 * 86_400)
     @State private var error: String?
 
+    private var hasProxies: Bool { !proxyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     private var lines: [ProxyList.Line] { ProxyList.parse(proxyText, defaultKind: proxyKind) }
-    private var total: Int { proxyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? count : lines.count }
+    private var total: Int { hasProxies ? lines.count : count }
 
     var body: some View {
         VStack(spacing: 0) {
             Form {
                 Section(L("batchCreate.section.name")) {
-                    TextField(L("batchCreate.pattern"), text: $namePattern, prompt: Text(L("batchCreate.pattern.prompt")))
+                    TextField(L("batchCreate.pattern"), text: $names.pattern, prompt: Text(L("batchCreate.pattern.prompt")))
                     HStack {
-                        Stepper(L("batchCreate.startNumber \(startNumber)"), value: $startNumber, in: 0...99_999)
+                        Stepper(L("batchCreate.startNumber \(names.start)"), value: $names.start, in: 0...99_999)
                         Spacer()
-                        Stepper(L("batchCreate.digits \(digits)"), value: $digits, in: 1...6)
+                        Stepper(L("batchCreate.digits \(names.digits)"), value: $names.digits, in: 1...6)
                     }
                     Text(L("batchCreate.preview \(previewNames)")).font(.caption).foregroundStyle(.secondary)
                 }
                 Section {
                     ProxyTextArea(text: $proxyText, kind: $proxyKind, lines: lines)
-                    if proxyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    if !hasProxies {
                         Stepper(L("batchCreate.count \(count)"), value: $count, in: 1...500)
                     }
                     Toggle(L("batchCreate.expiry"), isOn: $expiryEnabled)
@@ -135,17 +136,11 @@ struct BatchCreateView: View {
                 }
                 Section(L("batchCreate.section.common")) {
                     LabeledContent(L("editor.tags")) {
-                        TagTokenField(tags: $draft.tags, suggestions: model.allTags, placeholder: L("editor.tags.placeholder"))
+                        TagEditor(tags: $tags, suggestions: model.tagsByUsage, placeholder: L("editor.tags.placeholder"))
                     }
                     LanguagePicker(language: $language)
-                    Picker(L("common.timezone"), selection: Binding(
-                        get: { draft.timezoneAuto ? "auto" : draft.timezone },
-                        set: { v in if v == "auto" { draft.timezoneAuto = true } else { draft.timezoneAuto = false; draft.timezone = v } })) {
-                        Text(L("common.followExitIP.recommended")).tag("auto")
-                        Divider()
-                        ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
-                    }
-                    TextField(L("editor.notes"), text: $draft.notes, prompt: Text(L("common.optional")))
+                    TimezonePicker(timezone: $timezone)
+                    TextField(L("editor.notes"), text: $notes, prompt: Text(L("common.optional")))
                     NewProfileExtensionsRow()
                 }
             }
@@ -155,55 +150,27 @@ struct BatchCreateView: View {
         }
         .frame(width: 600, height: 700)
         .onAppear {
-            draft = ProfileDraft(defaultLanguage: model.defaultLanguage, tags: tag.map { [$0] } ?? [])
-            draft.extensionIds = model.newProfileExtensionIds
+            tags = tag.map { [$0] } ?? []
             language = model.defaultLanguage
         }
     }
 
     private var previewNames: String {
-        let names = (0..<min(3, max(total, 1))).map { i -> String in
-            let num = String(format: "%0\(digits)d", startNumber + i)
-            return namePattern.contains("{n}") ? namePattern.replacingOccurrences(of: "{n}", with: num) : namePattern + num
-        }
-        return names.joined(separator: L("common.listSeparator")) + (total > 3 ? L("common.ellipsis") : "")
+        let shown = (0..<min(3, max(total, 1))).map(names.name)
+        return shown.joined(separator: L("common.listSeparator")) + (total > 3 ? L("common.ellipsis") : "")
     }
 
     private func create() {
         do {
-            let proxies = proxyText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                ? [] : try ProxyList.parseStrict(proxyText, defaultKind: proxyKind)
-            guard !namePattern.trimmingCharacters(in: .whitespaces).isEmpty else { throw DraftError(L("batchCreate.error.pattern")) }
-            var template = Profile(name: "template")
-            var d = draft
-            d.name = "template"
-            d.proxyMode = .proxy
-            d.host = "placeholder"; d.portText = "1"   // 代理之后逐个替换
-            try d.apply(to: &template)
-            template.proxy = nil
-            template.language = language
+            let proxies = hasProxies ? try ProxyList.parseStrict(proxyText, defaultKind: proxyKind) : []
+            guard !names.pattern.trimmingCharacters(in: .whitespaces).isEmpty else { throw DraftError(L("batchCreate.error.pattern")) }
+            var template = Profile(name: "", language: language, timezone: timezone, tags: tags, notes: notes)
+            template.extensionIds = model.newProfileExtensionIds
             template.proxyExpiresAt = expiryEnabled && !proxies.isEmpty ? expiry : nil
-            model.batchCreate(template: template, namePattern: namePattern, startNumber: startNumber,
-                              digits: digits, count: count, proxies: proxies)
+            model.batchCreate(template: template, names: names, count: count, proxies: proxies)
             dismiss()
         } catch {
             self.error = error.localizedDescription
-        }
-    }
-}
-
-/// 语言选择：跟随出口 IP（auto）或常用语言。
-struct LanguagePicker: View {
-    var title = L("common.language")
-    @Binding var language: String
-    var body: some View {
-        Picker(title, selection: $language) {
-            Text(L("common.followExitIP.recommended")).tag(LanguageTag.auto)
-            Divider()
-            if language != LanguageTag.auto, !LanguageOptions.codes.contains(language) {
-                Text(language).tag(language)
-            }
-            ForEach(LanguageOptions.codes, id: \.self) { Text(LanguageOptions.label($0)).tag($0) }
         }
     }
 }
@@ -216,10 +183,6 @@ struct BatchEditView: View {
     let ids: [String]
 
     @State private var edit = BatchEdit()
-    @State private var addTags: [String] = []
-    @State private var removeTags: [String] = []
-    @State private var tzAuto = true
-    @State private var tz = TimeZone.current.identifier
     @State private var windowPreset = ProfileDraft.defaultWindowPreset
     @State private var addExt = Set<String>()
     @State private var removeExt = Set<String>()
@@ -230,25 +193,16 @@ struct BatchEditView: View {
             Form {
                 Section {
                     LabeledContent(L("batchEdit.addTags")) {
-                        TagTokenField(tags: $addTags, suggestions: model.allTags, placeholder: L("common.optional"))
+                        TagEditor(tags: $edit.addTags, suggestions: model.tagsByUsage, placeholder: L("common.optional"))
                     }
-                    LabeledContent(L("batchEdit.removeTags")) {
-                        TagTokenField(tags: $removeTags, suggestions: model.allTags, placeholder: L("common.optional"))
-                    }
+                    LabeledContent(L("batchEdit.removeTags")) { removeTagsPicker }
                 } header: { Text(L("batchEdit.header \(ids.count)")) }
 
                 Section(L("batchEdit.section.environment")) {
                     Toggle(L("batchEdit.setLanguage"), isOn: $edit.setLanguage)
                     if edit.setLanguage { LanguagePicker(language: $edit.language) }
                     Toggle(L("batchEdit.setTimezone"), isOn: $edit.setTimezone)
-                    if edit.setTimezone {
-                        Toggle(L("language.auto"), isOn: $tzAuto)
-                        if !tzAuto {
-                            Picker(L("common.timezone"), selection: $tz) {
-                                ForEach(TimeZone.knownTimeZoneIdentifiers, id: \.self) { Text($0).tag($0) }
-                            }
-                        }
-                    }
+                    if edit.setTimezone { TimezonePicker(timezone: $edit.timezone) }
                     Toggle(L("batchEdit.setGeolocation"), isOn: $edit.setGeolocation)
                     if edit.setGeolocation {
                         Picker(L("common.geolocation"), selection: $edit.geolocation) {
@@ -270,7 +224,7 @@ struct BatchEditView: View {
                     Section(L("batchEdit.section.extensions")) {
                         ForEach(model.extensionLibrary) { e in
                             HStack {
-                                Text(e.name.isEmpty ? String(e.id.prefix(12)) + "…" : e.name)
+                                Text(model.extensionName(e.id))
                                     .lineLimit(1).truncationMode(.tail)
                                     .help(e.id)
                                 Spacer(minLength: 12)
@@ -295,19 +249,34 @@ struct BatchEditView: View {
             SheetButtons(error: error, confirmTitle: L("batchEdit.confirm \(ids.count)"), onConfirm: apply)
         }
         .frame(width: 560, height: 620)
-        .onAppear { edit.language = LanguageTag.auto }
+    }
+
+    /// 只列出这批环境身上已有的标签（带个数），点一下标记为移除，再点取消。
+    @ViewBuilder private var removeTagsPicker: some View {
+        let present = AppModel.byUsage(ids.compactMap(model.profile).flatMap(\.tags))
+        if present.isEmpty {
+            Text(L("batchEdit.removeTags.none")).foregroundStyle(.secondary)
+        } else {
+            FlowLayout(spacing: 4, lineSpacing: 4) {
+                ForEach(present, id: \.tag) { t, n in
+                    let on = edit.removeTags.contains(t)
+                    Button {
+                        if on { edit.removeTags.removeAll { $0 == t } } else { edit.removeTags.append(t) }
+                    } label: {
+                        TagChip(title: t, systemImage: on ? "minus.circle.fill" : nil, detail: "\(n)", tint: on ? .red : nil)
+                    }
+                    .buttonStyle(.plain)
+                    .help(L("batchEdit.removeTags.help \(t) \(n)"))
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private func apply() {
         var e = edit
-        e.addTags = addTags
-        e.removeTags = removeTags
         if e.setLanguage, !LanguageTag.isValidSetting(e.language) { error = L("batchEdit.error.language \(e.language)"); return }
-        if e.setTimezone { e.timezone = tzAuto ? nil : tz }
-        if e.setWindow {
-            let wh = windowPreset.split(separator: "x").compactMap { Int($0) }
-            e.window = wh.count == 2 ? (wh[0], wh[1]) : nil
-        }
+        e.window = WindowSize(windowPreset)  // "默认" 解析不出尺寸，就是 nil
         e.addExtensions = Array(addExt)
         e.removeExtensions = Array(removeExt)
         model.batchEdit(ids, e)
@@ -345,9 +314,9 @@ struct AssignProxiesView: View {
                 }
                 Section(L("assign.preview")) {
                     ForEach(Array(targets.prefix(12).enumerated()), id: \.offset) { i, p in
-                        LabeledContent("#\(p.seq) \(p.name)") {
+                        LabeledContent(p.numberedName) {
                             if i < lines.count, case .success(let c) = lines[i].result {
-                                Text(verbatim: c.displayString).foregroundStyle(.secondary)
+                                Text(verbatim: c.urlString).foregroundStyle(.secondary)
                             } else {
                                 Text(L("assign.preview.noProxy")).foregroundStyle(.red)
                             }

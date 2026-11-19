@@ -15,6 +15,7 @@ struct TagTokenField: NSViewRepresentable {
         f.placeholderString = placeholder
         f.completionDelay = 0.1
         f.objectValue = tags
+        context.coordinator.pushed = tags
         f.setContentHuggingPriority(.defaultLow, for: .horizontal)
         f.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         return f
@@ -22,8 +23,11 @@ struct TagTokenField: NSViewRepresentable {
 
     func updateNSView(_ f: NSTokenField, context: Context) {
         context.coordinator.parent = self
-        let current = (f.objectValue as? [String]) ?? []
-        if current != tags, f.currentEditor() == nil { f.objectValue = tags }
+        // 只在标签被外部改掉时（比如点了下面的候选标签）才回写；自己刚同步出去的不回写，免得打断正在输入的文字
+        if tags != context.coordinator.pushed {
+            context.coordinator.pushed = tags
+            f.objectValue = tags
+        }
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -31,6 +35,8 @@ struct TagTokenField: NSViewRepresentable {
     @MainActor
     final class Coordinator: NSObject, NSTokenFieldDelegate {
         var parent: TagTokenField
+        /// 最近一次和外部对齐过的标签
+        var pushed: [String] = []
         init(_ parent: TagTokenField) { self.parent = parent }
 
         func controlTextDidChange(_ obj: Notification) { sync(obj) }
@@ -42,6 +48,7 @@ struct TagTokenField: NSViewRepresentable {
             var seen = Set<String>()
             let cleaned = raw.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                 .filter { !$0.isEmpty && seen.insert($0).inserted }
+            pushed = cleaned
             if cleaned != parent.tags { parent.tags = cleaned }
         }
 

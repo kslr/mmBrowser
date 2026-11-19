@@ -3,8 +3,7 @@ import Foundation
 /// 一次启动要执行的命令。纯数据，便于测试和排查。
 ///
 /// 恢复上次的会话用 `--restore-last-session`（macOS 作为登录项重开 Chrome 时 Chrome 自己也会加这个参数），
-/// 它覆盖"启动时"设置，不用改受签名保护的配置；新建的环境第一次打开时它不生效，正好打开起始页。
-/// 只启动一次进程（不用 `--no-startup-window`）。
+/// 它覆盖"启动时"设置，不用改受签名保护的配置。只启动一次进程（不用 `--no-startup-window`）。
 /// 语言用 `-AppleLanguages ("xx-YY", "<")`：macOS 把它解析成语言数组、取第一个；
 /// Chrome 会把这个位置参数当网址，但因为含 `<` 是无效网址，会被跳过，不会多开标签页。
 public struct LaunchPlan: Sendable, Equatable {
@@ -17,10 +16,9 @@ public struct LaunchPlan: Sendable, Equatable {
         profile: Profile,
         language resolved: String,
         userDataDir: URL,
-        localProxyPort: UInt16?,
+        localProxyPort: UInt16,
         timezone: String,
-        checkPageURL: String?,
-        openStartURLs: Bool
+        checkPageURL: String?
     ) -> LaunchPlan {
         let language = LanguageTag.isValid(resolved) ? resolved : "en-US"
         var args: [String] = [
@@ -29,25 +27,21 @@ public struct LaunchPlan: Sendable, Equatable {
             "--no-first-run",
             "--no-default-browser-check",
             "--restore-last-session",
-        ]
-        if let port = localProxyPort {
+            // 直连的环境也走本地入口（由入口直连），这样浏览器退出或入口停掉时一样立即断网。
             // 不加 --host-resolver-rules：Chrome 把它列为"不受支持的参数"，会在窗口顶部弹警告条，也容易被识别。
             // 也不需要它：SOCKS5 下域名总是交给代理解析；走代理的网址，预连接也会跳过本地 DNS 预解析。
-            args.append("--proxy-server=socks5://127.0.0.1:\(port)")
-        }
-        args += [
+            "--proxy-server=socks5://127.0.0.1:\(localProxyPort)",
             "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
             "--disable-quic",
             "--lang=\(language)",
             "--accept-lang=\(CountryLocale.acceptLanguage(for: language))",
         ]
-        if let w = profile.windowWidth, let h = profile.windowHeight {
-            args.append("--window-size=\(w),\(h)")
+        if let size = profile.windowSize {
+            args.append("--window-size=\(size.width),\(size.height)")
         }
         args += ChromeFlags.withDisabledFeatures(profile.extraArgs)
         args += ["-AppleLanguages", "(\"\(language)\", \"<\")"]
         if let checkPageURL { args.append(checkPageURL) }
-        if openStartURLs { args += profile.startURLs.filter { $0 != checkPageURL } }
         return LaunchPlan(arguments: args, environment: ["TZ": timezone])
     }
 }

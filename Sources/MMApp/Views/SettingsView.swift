@@ -53,7 +53,6 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section {
-                let _ = model.extensionLibraryVersion
                 ForEach(model.extensionLibrary) { e in
                     HStack {
                         VStack(alignment: .leading) {

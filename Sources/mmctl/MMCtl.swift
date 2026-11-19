@@ -20,6 +20,11 @@ func openStore() throws -> Store {
     return try Store(paths: .default())
 }
 
+/// 正在使用这个环境的 Chrome（不管是不是 mmBrowser 启动的）。
+func runningPID(_ p: Profile, _ store: Store) -> Int32? {
+    ProfileLock.runningPID(store.paths.profileDir(p.id))
+}
+
 struct ProfileOptions: ParsableArguments {
     @Option(help: ArgumentHelp(L("cli.profile.help.proxy")))
     var proxy: String?
@@ -31,10 +36,6 @@ struct ProfileOptions: ParsableArguments {
     var lang: String?
     @Option(help: ArgumentHelp(L("cli.profile.help.tz")))
     var tz: String?
-    @Option(name: .customLong("url"), help: ArgumentHelp(L("cli.profile.help.urls")))
-    var urls: [String] = []
-    @Option(help: ArgumentHelp(L("cli.profile.help.alwaysOpenUrls")))
-    var alwaysOpenUrls: Bool?
     @Option(name: .customLong("tag"), help: ArgumentHelp(L("cli.profile.help.tags")))
     var tags: [String] = []
     @Option(help: ArgumentHelp(L("cli.profile.help.notes")))
@@ -50,14 +51,13 @@ struct ProfileOptions: ParsableArguments {
     @Option(name: .customLong("ext"), help: ArgumentHelp(L("cli.profile.help.extensions")))
     var extensions: [String] = []
 
-    func apply(to p: inout Profile, store: Store) throws {
+    func apply(to p: inout Profile) throws {
         if let proxy { p.proxy = try ProxyConfig.parse(proxy, defaultKind: proxyType); p.allowDirect = false }
         if direct { p.proxy = nil; p.allowDirect = true }
         if let lang {
             guard LanguageTag.isValidSetting(lang) else { throw ValidationError(L("cli.error.language \(lang)")) }
             p.language = lang
         }
-        if let alwaysOpenUrls { p.alwaysOpenStartURLs = alwaysOpenUrls }
         if let tz {
             if tz == "auto" {
                 p.timezone = nil
@@ -66,19 +66,15 @@ struct ProfileOptions: ParsableArguments {
                 p.timezone = tz
             }
         }
-        if !urls.isEmpty { p.startURLs = urls }
         if !tags.isEmpty { p.tags = tags }
         if let notes { p.notes = notes }
         if let window {
-            let parts = window.lowercased().split(separator: "x").compactMap { Int($0) }
-            guard parts.count == 2 else { throw ValidationError(L("cli.error.window")) }
-            p.windowWidth = parts[0]; p.windowHeight = parts[1]
+            guard let size = WindowSize(window) else { throw ValidationError(L("cli.error.window")) }
+            p.windowSize = size
         }
         if let color {
-            guard color.range(of: "^#[0-9A-Fa-f]{6}$", options: .regularExpression) != nil else {
-                throw ValidationError(L("cli.error.color"))
-            }
-            p.themeColor = color.uppercased()
+            guard let hex = ThemePalette.parse(color) else { throw ValidationError(L("cli.error.color")) }
+            p.themeColor = hex
         }
         if let geo { p.geolocation = geo }
         if !extraArgs.isEmpty { p.extraArgs = extraArgs }
@@ -104,8 +100,7 @@ func describe(_ p: Profile, running: Int32?) -> String {
         L("cli.profile.proxy \(p.proxy?.displayString ?? (p.allowDirect ? L("common.directAllowed") : L("common.notConfigured")))"),
         L("cli.profile.languageTimezone \(p.language == LanguageTag.auto ? L("common.autoExitIP") : p.language) \(p.timezone ?? L("common.autoExitIP"))"),
         L("cli.profile.geolocation \(p.geolocation == .block ? L("common.block") : L("common.ask"))"),
-        L("cli.profile.windowColor \(p.windowWidth.map { "\($0)x\(p.windowHeight ?? 0)" } ?? L("common.default")) \(p.effectiveThemeColor)"),
-        L("cli.profile.startURLs \(p.startURLs.isEmpty ? "-" : p.startURLs.joined(separator: "  ")) \(p.alwaysOpenStartURLs ? L("cli.profile.everyLaunch") : L("cli.profile.firstLaunch"))"),
+        L("cli.profile.windowColor \(p.windowSize?.description ?? L("common.default")) \(p.effectiveThemeColor)"),
     ]
     if !p.extraArgs.isEmpty { lines.append(L("cli.profile.extraArgs \(p.extraArgs.joined(separator: " "))")) }
     if !p.extensionIds.isEmpty { lines.append(L("cli.profile.extensions \(p.extensionIds.joined(separator: " "))")) }
@@ -127,8 +122,8 @@ struct Create: AsyncParsableCommand {
     func run() async throws {
         let store = try openStore()
         var p = Profile(name: name)
-        try options.apply(to: &p, store: store)
-        if p.proxy == nil && !p.allowDirect {
+        try options.apply(to: &p)
+        if p.upstream == nil {
             throw ValidationError(L("cli.create.error.proxyRequired"))
         }
         let saved = try store.insert(p)
@@ -142,11 +137,10 @@ struct List: AsyncParsableCommand {
 
     func run() async throws {
         let store = try openStore()
-        let launcher = try? BrowserLauncher(store: store, chrome: ChromeInstallation())
-        let rows = try store.profiles(onlyDeleted: deleted)
+        let rows = try store.profiles(deleted ? .trash : .active)
         if rows.isEmpty { print(deleted ? L("cli.list.emptyTrash") : L("cli.list.empty")); return }
         for p in rows {
-            let status = launcher?.runningPID(of: p.id).map { _ in L("common.running") } ?? ""
+            let status = runningPID(p, store) == nil ? "" : L("common.running")
             let proxy = p.proxy?.displayString ?? (p.allowDirect ? L("common.direct") : L("common.notConfigured"))
             let exit = p.lastExit.map { "\($0.ip) \($0.countryCode ?? "")" } ?? ""
             print(String(format: "#%-4d %@", p.seq, "\(p.name)  \(p.tags.isEmpty ? "" : "[" + p.tags.joined(separator: ",") + "]  ")\(proxy)  \(exit)  \(p.language)  \(status)"))
@@ -161,8 +155,7 @@ struct Show: AsyncParsableCommand {
     func run() async throws {
         let store = try openStore()
         let p = try store.resolve(ref, includeDeleted: true)
-        let pid = (try? BrowserLauncher(store: store, chrome: ChromeInstallation()))?.runningPID(of: p.id)
-        print(describe(p, running: pid))
+        print(describe(p, running: runningPID(p, store)))
         print(L("cli.profile.directory \(store.paths.profileDir(p.id).path)"))
     }
 }
@@ -177,7 +170,7 @@ struct Set_: AsyncParsableCommand {
         let store = try openStore()
         var p = try store.resolve(ref)
         if let name { p.name = name }
-        try options.apply(to: &p, store: store)
+        try options.apply(to: &p)
         try store.update(p)
         print(describe(try store.resolve(p.id), running: nil))
     }
@@ -198,7 +191,8 @@ struct Check: AsyncParsableCommand {
         } else if let ref {
             let p = try store.resolve(ref)
             profile = p
-            if let cfg = p.proxy { upstream = .proxy(cfg) } else if p.allowDirect { upstream = .direct } else { throw ChromeError.noProxy }
+            guard let u = p.upstream else { throw ChromeError.noProxy }
+            upstream = u
         } else {
             throw ValidationError(L("cli.check.error.profileRequired"))
         }
@@ -225,16 +219,15 @@ struct Plan: AsyncParsableCommand {
         let p = try store.resolve(ref)
         let tz = p.timezone ?? p.lastExit?.timezone ?? L("cli.plan.exitTimezone")
         let lang = LanguageTag.resolve(p.language, countryCode: p.lastExit?.countryCode)
+        let dir = store.paths.profileDir(p.id)
         var checkURL = store.checkPage.url
-        if let url = checkURL, let open = SessionInspector.openTabURLs(userDataDir: store.paths.profileDir(p.id)),
-           open.contains(where: { SessionInspector.sameSite($0, url) }) {
+        if let url = checkURL, SessionInspector.hasOpenTab(sameSiteAs: url, userDataDir: dir) {
             checkURL = nil
             print(L("cli.plan.checkPageOpen"))
         }
-        let plan = LaunchPlan.make(profile: p, language: lang, userDataDir: store.paths.profileDir(p.id),
-                                   localProxyPort: p.proxy == nil ? nil : 0, timezone: tz,
-                                   checkPageURL: checkURL,
-                                   openStartURLs: p.lastOpenedAt == nil || p.alwaysOpenStartURLs)
+        // 本地入口的端口启动时才分配，这里用 0 占位
+        let plan = LaunchPlan.make(profile: p, language: lang, userDataDir: dir, localProxyPort: 0, timezone: tz,
+                                   checkPageURL: checkURL)
         print(L("cli.plan.environment \(tz)"))
         print(L("cli.plan.arguments") + plan.arguments.joined(separator: "\n  "))
     }
@@ -284,7 +277,7 @@ struct Launch: AsyncParsableCommand {
             case .tunnelClosed(let t, let up, let down): if verbose { print("  ← \(t.authority)  ↑\(up) ↓\(down)") }
             }
         })
-        print(L("cli.launch.started \(Int(running.pid)) \(Int(running.proxy?.port ?? 0)) \(running.timezone)"))
+        print(L("cli.launch.started \(Int(running.pid)) \(Int(running.proxy.port)) \(running.timezone)"))
         print(L("cli.launch.quitHint"))
         let watcher = SignalWatcher {
             print(L("cli.launch.closing"))
@@ -304,9 +297,7 @@ struct Remove: AsyncParsableCommand {
     func run() async throws {
         let store = try openStore()
         let p = try store.resolve(ref, includeDeleted: true)
-        if let pid = (try? BrowserLauncher(store: store, chrome: ChromeInstallation()))?.runningPID(of: p.id) {
-            throw ChromeError.alreadyRunning(pid: pid)
-        }
+        if let pid = runningPID(p, store) { throw ChromeError.alreadyRunning(pid: pid) }
         if purge {
             try store.purge(p.id)
             print(L("cli.remove.purged \(p.seq) \(p.name)"))
@@ -382,9 +373,7 @@ struct Cookies: AsyncParsableCommand {
         func run() async throws {
             let store = try openStore()
             let p = try store.resolve(ref)
-            if (try? BrowserLauncher(store: store, chrome: ChromeInstallation()))?.runningPID(of: p.id) != nil {
-                throw CookieError.running
-            }
+            if runningPID(p, store) != nil { throw CookieError.running }
             let cookies = try ChromeCookies.read(userDataDir: store.paths.profileDir(p.id))
             let data = try ChromeCookies.exportJSON(cookies)
             if let file {
@@ -405,9 +394,7 @@ struct Cookies: AsyncParsableCommand {
         func run() async throws {
             let store = try openStore()
             let p = try store.resolve(ref)
-            if (try? BrowserLauncher(store: store, chrome: ChromeInstallation()))?.runningPID(of: p.id) != nil {
-                throw CookieError.running
-            }
+            if runningPID(p, store) != nil { throw CookieError.running }
             let cookies = try ChromeCookies.importJSON(try Data(contentsOf: URL(fileURLWithPath: file)))
             let n = try ChromeCookies.write(cookies, userDataDir: store.paths.profileDir(p.id), replaceAll: replace)
             print(L("cli.cookies.imported \(n)"))

@@ -97,22 +97,6 @@
         }
       }
     },
-    "csv.header.alwaysOpenStartURLs" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "alwaysOpenStartURLs"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "每次打开启动页"
-          }
-        }
-      }
-    },
     "csv.header.color" : {
       "localizations" : {
         "en" : {
@@ -305,22 +289,6 @@
         }
       }
     },
-    "csv.header.startURLs" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "startURLs"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "启动页"
-          }
-        }
-      }
-    },
     "csv.header.tags" : {
       "localizations" : {
         "en" : {
@@ -413,22 +381,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "禁止"
-          }
-        }
-      }
-    },
-    "csv.value.yes" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "yes"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "是"
           }
         }
       }
@@ -941,22 +893,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "第 %lld 行：%@"
-          }
-        }
-      }
-    },
-    "error.import.duplicateProxy %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Duplicate of an earlier row: %@"
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "和前面的行重复：%@"
           }
         }
       }
@@ -1585,18 +1521,18 @@
         }
       }
     },
-    "error.store.proxyBound %lld %@" : {
+    "profile.defaultName %lld" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "This proxy is already assigned to profile #%lld “%@” (one profile per proxy)."
+            "value" : "Profile-%lld"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "这个代理已经绑定在环境 #%lld「%@」上（一个代理只能对应一个环境）"
+            "value" : "环境-%lld"
           }
         }
       }
@@ -1661,22 +1597,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "上游代理 %@:%lld"
-          }
-        }
-      }
-    },
-    "warning.backup.proxyBound %@ %lld %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Proxy %@ is already assigned to #%lld “%@”. The imported profile has no proxy."
-          }
-        },
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "代理 %@ 已绑定在 #%lld「%@」上，导入的环境没有设置代理"
           }
         }
       }

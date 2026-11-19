@@ -4,8 +4,8 @@ import Foundation
 /// 一个正在运行的环境：Chrome 主进程 + 它专属的本地代理入口。
 public final class RunningBrowser: @unchecked Sendable {
     public let profileId: String
-    public let proxy: LocalProxyServer?
-    public let exit: ExitInfo?
+    public let proxy: LocalProxyServer
+    public let exit: ExitInfo
     public let timezone: String
     public let startedAt = Date()
     private let process: Process
@@ -13,7 +13,7 @@ public final class RunningBrowser: @unchecked Sendable {
     private var exitHandlers: [@Sendable () -> Void] = []
     private var exited = false
 
-    init(profileId: String, process: Process, proxy: LocalProxyServer?, exit: ExitInfo?, timezone: String) {
+    init(profileId: String, process: Process, proxy: LocalProxyServer, exit: ExitInfo, timezone: String) {
         self.profileId = profileId
         self.process = process
         self.proxy = proxy
@@ -44,7 +44,7 @@ public final class RunningBrowser: @unchecked Sendable {
             exitHandlers = []
             return h
         }
-        proxy?.stop()  // 断开即断网：浏览器退出后立刻回收入口
+        proxy.stop()  // 断开即断网：浏览器退出后立刻回收入口
         handlers.forEach { $0() }
     }
 
@@ -53,12 +53,6 @@ public final class RunningBrowser: @unchecked Sendable {
         await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
             onExit { cont.resume() }
         }
-    }
-
-    /// 切到前台。
-    @MainActor
-    public func activate() {
-        NSRunningApplication(processIdentifier: pid)?.activate(options: [.activateAllWindows])
     }
 
     /// 正常退出（相当于 Cmd-Q，Chrome 会保存会话）。超时后强制结束。
@@ -83,7 +77,7 @@ public final class RunningBrowser: @unchecked Sendable {
         if alive() { kill(pid, SIGKILL) }
     }
 
-    /// 把任意 PID 的 Chrome 窗口切到前台。
+    /// 把这个 PID 的 Chrome 窗口切到前台（本程序启动的和残留的都行）。
     @MainActor
     public static func activate(pid: Int32) {
         NSRunningApplication(processIdentifier: pid)?.activate(options: [.activateAllWindows])

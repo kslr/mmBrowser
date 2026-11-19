@@ -11,7 +11,12 @@ public enum SessionInspector {
     static let tabClosed: UInt8 = 16
     static let windowClosed: UInt8 = 17
 
-    public static func openTabURLs(userDataDir: URL) -> [String]? {
+    /// 上次的会话里有没有还开着的、和 url 同站的标签页。
+    public static func hasOpenTab(sameSiteAs url: String, userDataDir: URL) -> Bool {
+        openTabURLs(userDataDir: userDataDir)?.contains { sameSite($0, url) } ?? false
+    }
+
+    static func openTabURLs(userDataDir: URL) -> [String]? {
         let dir = userDataDir.appendingPathComponent("Default/Sessions")
         guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey]) else {
             return []
@@ -87,7 +92,7 @@ public enum SessionInspector {
     }
 
     /// 两个网址是不是同一个检测站（比较主机名，忽略 www.）。
-    public static func sameSite(_ a: String, _ b: String) -> Bool {
+    static func sameSite(_ a: String, _ b: String) -> Bool {
         func host(_ s: String) -> String? {
             URL(string: s)?.host?.lowercased().replacingOccurrences(of: "^www\\.", with: "", options: .regularExpression)
         }

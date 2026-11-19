@@ -25,9 +25,4 @@ public enum CountryLocale {
         let base = language.split(separator: "-").first.map(String.init) ?? language
         return base == language ? language : "\(language),\(base)"
     }
-
-    /// `en-US` → `en_US`。用于 -AppleLocale。
-    public static func appleLocale(for language: String) -> String {
-        language.replacingOccurrences(of: "-", with: "_")
-    }
 }

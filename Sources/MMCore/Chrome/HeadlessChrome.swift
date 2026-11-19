@@ -146,10 +146,6 @@ final class HeadlessChrome: @unchecked Sendable {
         return sessionId
     }
 
-    func evaluate(_ expression: String, sessionId: String) async throws -> CDPJSON {
-        try await cdp.evaluate(expression, sessionId: sessionId)
-    }
-
     /// 正常关闭（让 Chrome 写完配置），超时则强制结束。
     func close() async {
         _ = try? await cdp.send("Browser.close")

@@ -42,7 +42,7 @@ public enum CheckPage: Codable, Hashable, Sendable {
 
 extension Store {
     public var checkPage: CheckPage {
-        get { (try? setting(CheckPage.settingKey, as: CheckPage.self)) ?? .default }
+        (try? setting(CheckPage.settingKey, as: CheckPage.self)) ?? .default
     }
 
     public func setCheckPage(_ page: CheckPage) throws {
