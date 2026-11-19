@@ -101,14 +101,16 @@ public enum ExtensionManager {
                     case "enabled":
                         remaining.remove(id)
                     case "disabled":
-                        _ = try await headless.cdp.evaluate(
+                        let result = try await headless.cdp.evaluate(
                             "new Promise(r => chrome.management.setEnabled('\(id)', true, () => r(chrome.runtime.lastError ? chrome.runtime.lastError.message : 'ok')))",
                             sessionId: session)
+                        if result.string == "ok" { remaining.remove(id) }  // 启用成功就不用等下一轮再确认
                     default:
                         break  // 还在下载
                     }
                 }
-                if !remaining.isEmpty { try await Task.sleep(for: .seconds(1)) }
+                // 扩展是 Chrome 自己逐个下载的，轮询密一点，下载完就能马上启用
+                if !remaining.isEmpty { try await Task.sleep(for: .milliseconds(250)) }
             }
         } catch {
             headless.kill()
